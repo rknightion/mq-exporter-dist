@@ -61,7 +61,42 @@ Base images and requested tool versions are pinned. Transitive RPM packages are
 recorded, but the toolchain is not fully archived. Whole-archive reproducibility
 is not yet established because build-image identity can differ between builds.
 
-## Documentation
+## RPM candidates
+
+`just build-rpm ARCHIVE CHECKSUMS` wraps a verified Linux archive without rebuilding
+or stripping its executables. Run it once per exporter. Unsigned candidates,
+SHA-256 files and packaging metadata are written to `.work/rpm-candidates`, never
+automatically included in a GitHub release. Existing output names are rejected.
+Use a fresh output directory for independent reproducibility comparisons.
+Unpublished Candidate release runs also retain these as explicitly named
+`unsigned-rpm-*` CI artifacts. The publishing job does not download those artifacts.
+`just test-rpm DIRECTORY` checks both packages in disposable EL8/EL9 userspaces.
+
+RPM Version is the pinned upstream tag without `v`; Release is the distribution
+version without `v`, replacing `-rc.` with `~rc.`, followed by `.mqdist`. For example,
+`6.0.0-0.1.0~rc.5.mqdist` sorts before `6.0.0-0.1.0.mqdist`. Existing archive and
+GitHub distribution tags remain distinct from upstream. Never reuse an RPM NEVRA
+for changed bytes. Bump the distribution revision when packaging changes.
+
+The build uses the pinned EL8 packaging image and records the resolved image,
+RPM inventory, packaging commit, input archive identity and output hash. Automatic
+native requirements are retained except `libmqm_r.so`, because IBM's runtime can
+be installed outside RPM. IBM MQ remains mandatory. No MQ runtime is bundled.
+
+Before publication, validate install/upgrade/removal and labels on native RHEL8/9,
+including active template instances and retained configuration. Container RPM
+transactions are not native service or SELinux proof. Package removal must stop
+only its own instances; upgrades require an explicit administrator restart.
+
+A public yum/DNF repository is not enabled yet. Publication requires an approved
+long-lived signing key, protected signing workflow, package signatures, signed
+repository metadata and a published key fingerprint. Sign and test the final
+bytes, generate metadata with `createrepo_c`, verify with `gpgcheck=1` and
+`repo_gpgcheck=1` on EL8/9, then publish immutable versioned repository snapshots.
+Keep prereleases opt-in. Do not tell users to disable signature verification to
+install an unsigned candidate. Offline users receive the same signed RPMs and key.
+
+## Documentation site
 
 `just docs-build` generates the static site from approved user-facing pages.
 `just docs-lock` refreshes its hash-locked build dependencies. The Pages workflow

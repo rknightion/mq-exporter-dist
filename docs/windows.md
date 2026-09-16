@@ -3,6 +3,11 @@
 The PowerShell installer installs a precompiled exporter with a Windows service
 adapter. Windows Server 2019 amd64 is a provisional target.
 
+This is a ZIP plus a PowerShell installer, not an MSI. It configures the exporter
+service, not Alloy or Prometheus. Add the separate [scrape configuration](prometheus.md#connect-your-monitoring-system)
+to your existing monitoring agent. The OTel package instead pushes to the OTLP
+receiver you configure.
+
 ## Before you install
 
 Use elevated, 64-bit **Windows PowerShell 5.1**. PowerShell 7 and a compiler are

@@ -8,6 +8,9 @@ python_version := "3.14"
 # renovate: datasource=pypi depName=mkdocs
 mkdocs_version := "1.6.1"
 
+# renovate: datasource=rpm depName=rpm-build
+rpm_build_version := "4.14.3-32.el8_10"
+
 # List supported tasks.
 default:
     @just --list
@@ -58,6 +61,16 @@ build-linux version exporter="prometheus":
 [group('build')]
 build-windows version exporter="prometheus":
     python3 build/build.py windows {{ quote(version) }} --exporter {{ quote(exporter) }}
+
+# Package verified Linux archive bytes as an unsigned candidate RPM (requires Docker).
+[group('build')]
+build-rpm archive checksums:
+    python3 build/rpm.py {{ quote(archive) }} {{ quote(checksums) }}
+
+# Check RPM transactions in EL8/EL9 userspaces (requires Docker; not native SELinux).
+[group('check')]
+test-rpm packages:
+    python3 build/rpm_validate.py {{ quote(packages) }}
 
 # Inspect public source and release payloads before upload.
 [group('check')]

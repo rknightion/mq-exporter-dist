@@ -6,6 +6,7 @@ report() { local label=$1; shift; printf '%s: ' "$label"; if ! "$@" 2>/dev/null;
 report architecture uname -m
 report kernel uname -r
 report glibc env LD_LIBRARY_PATH=/usr/lib64:/lib64 getconf GNU_LIBC_VERSION
+report SELinux getenforce
 if [[ -x $mq/bin/dspmqver ]]; then
   "$mq/bin/dspmqver" 2>/dev/null | awk '/^(Version|Level|Platform|Mode):/ {print}'
 else printf 'MQ version: UNAVAILABLE (dspmqver missing)\n'; fi

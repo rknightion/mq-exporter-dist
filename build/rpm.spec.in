@@ -1,0 +1,65 @@
+%global debug_package %{nil}
+%global __strip /bin/true
+%global _build_id_links none
+# MQ is supplied by the administrator, potentially outside the RPM database.
+# Keep automatic glibc and every other native dependency requirement.
+%global __requires_exclude ^libmqm_r[.]so.*$
+Name: @NAME@
+Version: @VERSION@
+Release: @RELEASE@
+Summary: Community distribution of IBM MQ @EXPORTER@ exporter
+License: Apache-2.0
+URL: https://github.com/rknightion/mq-exporter-dist
+BuildArch: x86_64
+Requires: systemd
+Requires(post): policycoreutils
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+
+%description
+Precompiled upstream IBM MQ exporter. Community software without warranty,
+not affiliated with or supported by IBM or Grafana Labs. Requires an existing
+IBM MQ 9.3.0.27 runtime. No MQ libraries, Alloy, credentials or configuration
+are installed. Configure an instance and grant MQ permissions before starting.
+
+%prep
+
+%build
+
+%install
+install -d %{buildroot}/usr/libexec/%{name} %{buildroot}/usr/share/licenses/%{name}
+install -d %{buildroot}/usr/share/doc/%{name} %{buildroot}/etc/%{name}
+install -d %{buildroot}/usr/lib/systemd/system
+install -m755 /work/payload/mq_@EXPORTER@ /work/payload/mq-dist /work/payload/mq-config-check %{buildroot}/usr/libexec/%{name}/
+install -m644 /work/payload/LICENSE /work/payload/THIRD-PARTY-NOTICES.txt %{buildroot}/usr/share/licenses/%{name}/
+install -m644 /work/payload/build-metadata.json /work/payload/sbom.cdx.json %{buildroot}/usr/share/doc/%{name}/
+install -m644 /work/instance.service %{buildroot}/usr/lib/systemd/system/%{name}@.service
+
+%post
+# Restore default policy labels only on package-owned paths. RPM also labels
+# payload files when SELinux is enabled; this covers replacement transactions.
+if [ -e /sys/fs/selinux/enforce ]; then
+    /sbin/restorecon /usr/libexec/%{name} /usr/libexec/%{name}/* /etc/%{name} /usr/lib/systemd/system/%{name}@.service || exit 1
+fi
+# No preset, enable, start or restart: instances require administrator configuration.
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+
+%preun
+# Disable on the template removes instance enablement links, but stopping the
+# template itself cannot stop instantiated units. Stop only this product's units.
+if [ "$1" -eq 0 ]; then
+    /usr/bin/systemctl stop '%{name}@*.service' >/dev/null 2>&1 || :
+fi
+%systemd_preun %{name}@.service
+
+%postun
+%systemd_postun %{name}@.service
+
+%files
+%dir /usr/libexec/%{name}
+/usr/libexec/%{name}/*
+/usr/lib/systemd/system/%{name}@.service
+%dir %attr(0755,root,root) /etc/%{name}
+%license /usr/share/licenses/%{name}
+%doc /usr/share/doc/%{name}

@@ -17,6 +17,7 @@ nav:
       - OpenTelemetry: otel.md
   - Install:
       - Linux: linux.md
+      - RPM packages: rpm.md
       - Windows: windows.md
   - Operate:
       - Configuration: configuration.md

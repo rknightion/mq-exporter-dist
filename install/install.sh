@@ -7,6 +7,12 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 # Explicitly precede the loader cache, even when inherited LD_LIBRARY_PATH is empty.
 # Do not change LD_PRELOAD or system loader configuration / monitoring injection.
 system_tool() { LD_LIBRARY_PATH=/usr/lib64:/lib64 "$@"; }
+selinux_active() { [[ -e /sys/fs/selinux/enforce ]]; }
+restore_labels() {
+  selinux_active || return 0
+  # No recursion, forced contexts, custom policy or changes to IBM's runtime.
+  system_tool restorecon -- "$@" || die 'SELinux label restoration failed; service not restarted'
+}
 # IBM's native RPM installation owns its top-level directory as mqm (mode 0555).
 # Only that exact runtime directory may use this owner; ancestors and our own
 # installation tree still require root. Mode checks below apply to both owners.
@@ -104,6 +110,9 @@ glibc=$(system_tool getconf GNU_LIBC_VERSION)
 [[ $glibc == 'glibc 2.28' || $glibc == 'glibc 2.34' ]] || die 'initial targets require glibc 2.28 or 2.34'
 ((EUID==0)) || die 'run installation as root'
 id "$account" >/dev/null 2>&1 || die 'service account does not exist'
+if selinux_active; then
+  command -v restorecon >/dev/null || die 'SELinux requires restorecon (policycoreutils)'
+fi
 [[ $(id -u "$account") != 0 ]] || die 'service account must not be root'
 for path_role in root mq; do
   p=${!path_role}
@@ -237,6 +246,7 @@ EOF
 chmod 644 "$scratch/$unit"
 systemd-analyze verify "$scratch/$unit" || die 'unit validation failed'
 "$helper" replace "$scratch/$unit" "/etc/systemd/system/$unit"
+restore_labels "$root" "$dest" "$dest/$binary" "$dest/mq-config-check" "$dest/mq-dist" "$dest/config.json" "$dest/identity" "$dest/port" "/etc/systemd/system/$unit"
 systemctl daemon-reload
 systemctl enable "$unit"
 if ((start)); then systemctl restart "$unit"; fi

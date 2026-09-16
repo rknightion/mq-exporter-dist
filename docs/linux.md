@@ -3,6 +3,29 @@
 The Bash installer installs a precompiled exporter and a systemd service. It
 supports RHEL 8.10 and RHEL 9.x on x86-64 as provisional targets.
 
+RPM packaging is being validated separately. It uses the same exporter bytes,
+with IBM's upstream version and a community packaging suffix; no signed RPM
+repository is published yet. The archive installer remains the supported candidate
+installation path. See [RPM installation](rpm.md) for the package layout.
+
+## SELinux
+
+Keep SELinux enforcing. The tested RHEL hosts needed no custom exporter policy.
+This does not mean the exporter has a dedicated confined SELinux domain.
+
+When SELinux is enabled, the installer requires `restorecon` from
+`policycoreutils`. It restores policy-defined labels on its own installed files
+and service unit before restarting the service. It does not recursively relabel
+directories, change IBM MQ labels, add allow rules or disable enforcement.
+Label-restoration failure stops installation before service restart.
+
+For a custom installation path, inspect the expected and current contexts with
+`matchpathcon` and `ls -Z`. Administrators should configure persistent path mappings
+with `semanage fcontext` when needed, then apply them with `restorecon`. Do not use
+blanket `chcon` or generated `audit2allow` rules as an installation workaround.
+Review recent denials with `ausearch -m AVC,USER_AVC -ts recent`. A denial needs
+investigation; Unix file permissions and systemd sandbox access are separate checks.
+
 ## Before you install
 
 Check [compatibility](compatibility.md). You need IBM MQ 9.3.0.27, an existing

@@ -1,6 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "packageRules": [{
+    "matchDatasources": ["rpm"],
+    "matchPackageNames": ["rpm-build"],
+    "registryUrls": ["https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/"],
+    "versioning": "rpm"
+  }],
   "customManagers": [{
     "customType": "regex",
     "managerFilePatterns": ["/^justfile$/"],

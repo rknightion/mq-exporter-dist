@@ -37,6 +37,9 @@ system with the queues you intended to monitor.
 
 ## Connect your monitoring system
 
+Neither package bundles Alloy or Prometheus configuration. Install and configure
+your monitoring agent separately; the exporter installers never edit it.
+
 Keep `integrations/ibm-mq` as the scrape job name if you use the Grafana IBM MQ
 integration dashboards. Their queries select that job name.
 
@@ -52,6 +55,22 @@ configure the listener, network access and TLS deliberately. The installer does
 not open firewall ports or configure TLS. An
 [Alloy example](https://github.com/rknightion/mq-exporter-dist/blob/main/examples/alloy.alloy)
 is also available.
+
+For Alloy on the same host, add this to its existing configuration and connect it
+to your existing authenticated `prometheus.remote_write` component named `metrics`:
+
+```alloy
+prometheus.scrape "ibm_mq_qm1" {
+  targets = [{ __address__ = "127.0.0.1:9157", instance = "QM1" }]
+  job_name = "integrations/ibm-mq"
+  scrape_interval = "60s"
+  forward_to = [prometheus.remote_write.metrics.receiver]
+}
+```
+
+Validate and reload Alloy using your normal deployment process. Check both its
+scrape result and the received MQ metrics. The snippet does not configure a
+destination or credentials, and does not replace the rest of your Alloy config.
 
 ## Connection failures
 
