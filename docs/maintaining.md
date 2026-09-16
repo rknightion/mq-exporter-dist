@@ -88,13 +88,21 @@ including active template instances and retained configuration. Container RPM
 transactions are not native service or SELinux proof. Package removal must stop
 only its own instances; upgrades require an explicit administrator restart.
 
-A public yum/DNF repository is not enabled yet. Publication requires an approved
-long-lived signing key, protected signing workflow, package signatures, signed
+A public yum/DNF repository is not enabled yet. The dedicated public signing key
+and expiry metadata are in [keys](../keys/README.md). Publication still requires a
+protected signing workflow, package signatures, signed
 repository metadata and a published key fingerprint. Sign and test the final
 bytes, generate metadata with `createrepo_c`, verify with `gpgcheck=1` and
 `repo_gpgcheck=1` on EL8/9, then publish immutable versioned repository snapshots.
 Keep prereleases opt-in. Do not tell users to disable signature verification to
 install an unsigned candidate. Offline users receive the same signed RPMs and key.
+
+Use only the signing subkey in automation; keep the certification key and
+revocation certificate outside CI. Renew or rotate the signing subkey before its
+recorded expiry, publish the updated public key, and verify old and new signatures
+on EL8/EL9 before switching. Back up encrypted secret material off-device and
+verify restoration. A public key commit alone does not complete CI secret custody
+or authorize release publication.
 
 ## Documentation site
 

@@ -1,0 +1,19 @@
+{
+  "project": "mq-exporter-dist",
+  "keys": [
+    {
+      "role": "certification",
+      "algorithm": "RSA-4096",
+      "fingerprint": "A3D2D5D68404A4E6088E3B2EB0318897DDF2F968",
+      "created": "2026-09-16T20:10:22.000Z",
+      "expires": "2029-09-15T20:10:22.000Z"
+    },
+    {
+      "role": "signing",
+      "algorithm": "RSA-4096",
+      "fingerprint": "5E7E35711F9B400655262791A6E52FAD53646507",
+      "created": "2026-09-16T20:10:24.000Z",
+      "expires": "2027-09-16T20:10:24.000Z"
+    }
+  ]
+}
