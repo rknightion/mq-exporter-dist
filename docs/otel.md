@@ -5,14 +5,11 @@ pushes MQ metrics over OTLP. This community package uses the same pinned IBM tag
 and vendored dependencies as the Prometheus package, without changing its
 collector. It is not affiliated with IBM or Grafana Labs and comes without warranty.
 
-**Candidate builds passed; not included in published v0.1.0-rc.1.** The separate
-v0.1.0-rc.3 packages passed Linux and Windows build-host validation in
-[CI run 35102719891](https://github.com/rknightion/mq-exporter-dist/actions/runs/35102719891).
-They remain CI artifacts, not a release. Download links
-will appear in [GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases)
-only after a new candidate is explicitly published. Do not use the Prometheus
-archive as an OTel package. Initial platform targets and native MQ prerequisites
-are the same; validation evidence is tracked separately.
+**Not yet published.** OpenTelemetry packages are not included in v0.1.0-rc.1.
+Use this guide when an OTel candidate appears in
+[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases).
+Do not use the Prometheus archive as an OTel package. Check
+[compatibility](compatibility.md) before deployment.
 
 ## Separate downloads
 
@@ -49,7 +46,7 @@ $credential = Get-Credential '.\mqmon'
 
 Omit archive/checksum arguments for a versioned online download. Client connection
 options, private MQ password files, offline verification, backups and configuration
-preservation follow the [main installer guide](../README.md). Existing instances cannot
+preservation follow the [Linux](linux.md) and [Windows](windows.md) guides. Existing instances cannot
 silently switch exporter or destination; use a new instance or explicit repoint and
 configuration replacement. OTel has no listener port; `Port` is unused.
 

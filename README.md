@@ -1,175 +1,57 @@
-# mq-exporter-dist
+# MQ exporters
 
 > [!WARNING]
 > Community-contributed software, provided **AS IS, without warranty of any kind**.
 > This project is not affiliated with, endorsed by, sponsored by or supported by
-> IBM or Grafana Labs. Those companies have no responsibility for this distribution.
+> IBM or Grafana Labs.
 
-Community packaging and installation for [IBM's MQ exporters](https://github.com/ibm-messaging/mq-metric-samples/tree/v6.0.0/cmd).
-This is not an IBM-supported product or an official IBM release. The collector is
-IBM's unchanged source. Distribution versions are independent of upstream versions.
+Precompiled packages and installers for [IBM's MQ exporters](https://github.com/ibm-messaging/mq-metric-samples).
+Install one exporter on a server with an existing IBM MQ runtime. You do not need
+Go, Git, a compiler, MQ SDK headers or access to Go module registries on that server.
 
-[Documentation site](https://rknightion.github.io/mq-exporter-dist/) ·
-[Release downloads](https://github.com/rknightion/mq-exporter-dist/releases) ·
-[v0.1.0 acceptance](docs/release-v0.1.0.md)
+## Choose your exporter
 
-## Choose one exporter
-
-| Exporter | Delivery | Packages |
+| | Prometheus | OpenTelemetry |
 |---|---|---|
-| [mq_prometheus](docs/prometheus.md) | Prometheus scrapes an HTTP endpoint | `mq-exporter-dist-VERSION-PLATFORM` |
-| [mq_otel](docs/otel.md) | Pushes metrics to your OTLP receiver | `mq-otel-dist-VERSION-PLATFORM` |
+| Collector | `mq_prometheus` | `mq_otel` |
+| Delivery | Prometheus scrapes an HTTP endpoint | Sends metrics to an OTLP receiver |
+| Package prefix | `mq-exporter-dist` | `mq-otel-dist` |
+| Get started | [Prometheus guide](docs/prometheus.md) | [OpenTelemetry guide](docs/otel.md) |
 
-These are **separate packages**, not a bundle. Each contains only its selected IBM
-exporter, matching configuration checker, installer and distribution helpers.
-The published v0.1.0-rc.1 has Prometheus packages only; OTel is being validated for
-the next candidate. Instructions below default to Prometheus. No additional IBM
-exporters are currently packaged.
+Each download contains one exporter and its installation tools. You do not need
+both packages. Both use unchanged IBM upstream source at `v6.0.0`; distribution
+versions are separate from IBM's exporter version.
 
-**Initial platform targets are provisional:** RHEL 8.10 / glibc 2.28 and RHEL 9.x /
-glibc 2.34, Linux x86-64, IBM MQ 9.3.0.27 runtime compatibility; and Windows Server
-2019 amd64. The Windows MQ runtime version must be independently established.
-See the [compatibility matrix](docs/compatibility.md) for measured evidence and
-unavailable tests. A candidate release is not a stable compatibility claim.
+## Install a candidate
 
-## Target-server prerequisites
+**Platform support is provisional.** Stable v0.1.0 is not available.
+[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases) currently
+provides Prometheus v0.1.0-rc.1. OpenTelemetry packages are not yet published.
 
-An existing licensed 64-bit IBM MQ installation and an existing dedicated service
-account with the required MQ permissions. Binaries dynamically load IBM MQ native
-libraries. MQ libraries and glibc are **not included**. Do not install a development
-toolchain on the monitored server: Git, Go, GCC, SDK headers, Docker, jq, gh and Go
-module registry access are not needed.
+1. Check the [platform requirements](docs/compatibility.md) and your installed MQ runtime.
+2. Follow the [Linux installation guide](docs/linux.md) or [Windows installation guide](docs/windows.md).
+3. Check the MQ connection and expected queues using your [exporter's guide](docs/prometheus.md).
 
-Windows also needs the native prerequisites of its installed MQ runtime. Import
-inspection of the MQ 9.3.0.27 client shows dependencies on `VCRUNTIME140.dll` and
-`VCRUNTIME140_1.dll` (Microsoft x64 Visual C++ v14 runtime). A bare Server Core image
-does not establish these prerequisites. Obtain the appropriate supported runtime
-from [Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
-The exporter installer does not download or install it, and no Microsoft runtime
-DLLs are bundled with the exporter.
+Installers support online and offline installation. They preserve existing
+configuration by default and do not create MQ objects or change MQ permissions,
+MAXHANDS, firewall rules or TLS policy.
 
-Linux installation needs Bash, systemd, GNU coreutils/tar/gzip, util-linux
-(`flock`, `runuser`), and curl for online downloads. These are normally present on
-RHEL; the installer does not install packages. Windows installation needs elevated
-64-bit Windows PowerShell 5.1 and the installed MQ native runtime. No PowerShell 7
-or C compiler is needed on Windows Server 2019.
+## Requirements
 
-## Linux
+Initial targets are Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x /
+glibc 2.34, with IBM MQ 9.3.0.27; and Windows Server 2019 amd64.
+The Windows MQ version and native prerequisites need separate validation.
 
-Download `install.sh` from a reviewed repository revision or extract it from a
-verified release archive. Do not pipe a network response directly into a root shell.
-Use a concrete version from [Releases](https://github.com/rknightion/mq-exporter-dist/releases):
+Target servers need an existing licensed 64-bit IBM MQ installation and a
+dedicated service account with the required MQ permissions. The executables
+dynamically load IBM MQ libraries. MQ libraries and glibc are not bundled.
 
-```bash
-sudo bash install.sh --version v0.1.0-rc.1 \
-  --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
-```
+Build machines have different requirements: Git, Go, Python 3.12+, just,
+shellcheck and PowerShell, plus Docker for Linux builds. Windows builds acquire
+a pinned C toolchain. These are **build-machine requirements only**.
+Source pins and build commands are in the repository's
+[maintainer guide](https://github.com/rknightion/mq-exporter-dist/blob/main/docs/maintaining.md).
 
-For offline installation, transfer the release archive, `SHA256SUMS` and installer
-through your approved channel, then supply `--archive /media/mq-exporter-dist-v0.1.0-rc.1-linux-amd64.tar.gz
---checksums /media/SHA256SUMS` in addition to the same arguments. An archive name is
-not trusted: the checksum entry is selected by the explicit release and platform.
-
-Instances have separate binaries, configuration, units and journal streams. A second
-instance uses `--instance qm2 --qmgr QM2 --port 9158`. Existing configuration is
-preserved. Use `--replace-config` to replace it with a backed-up generated file;
-changing connection identity also requires `--repoint`. Never run concurrent
-installations into different roots using the same service names or ports.
-
-```bash
-journalctl -u mq-exporter-qm1.service
-/opt/mq-exporter/qm1/mq-dist health --qmgr QM1 --url http://127.0.0.1:9157/metrics
-```
-
-`Restart=on-failure` retries initial connection failures every 15 seconds. After a
-successful connection, upstream `keepRunning` handles reconnection. Read logs for
-authorization or configuration failures rather than treating retries as readiness.
-
-For explicit client mode, add `--mode client --channel APP.SVRCONN
---conn-name 'mq.example.com(1414)'`, or `--mode client --ccdt <URL>` for an existing
-CCDT. Local bindings uses the selected server installation and needs a real local
-queue manager; a redistributable client smoke test does not prove bindings works.
-
-## Windows
-
-Transfer `install.ps1` and the Windows ZIP/checksums, or let the installer download
-the explicit public release. Run from elevated Windows PowerShell 5.1:
-
-```powershell
-$credential = Get-Credential 'EXAMPLE\mqmon'
-.\install.ps1 -Version v0.1.0-rc.1 -Instance qm1 -QueueManager QM1 `
-  -ServiceAccount 'EXAMPLE\mqmon' -ServiceCredential $credential -Port 9157
-```
-
-Offline adds `-Archive 'D:\Media\mq-exporter-dist-v0.1.0-rc.1-windows-amd64.zip'
--Checksums 'D:\Media\SHA256SUMS'`. Provision the dedicated account's “Log on as a
-service” right and MQ permissions separately. Passwords are not command-line
-arguments. Existing service credentials are preserved during updates.
-
-The included `mq-service.exe` implements the Windows Service Control Manager
-protocol. It starts the unchanged exporter, keeps its MQ-specific PATH local to the
-child, retries exits every 15 seconds and stops its tracked child on service stop.
-The console exporter is never registered directly with SCM. There is no MQ SERVICE
-object creation. Service logs are per-instance `logs\exporter.log`; arrange local
-retention/rotation while the service is stopped. Service integration is provisional
-until the Server 2019 acceptance commands have passed.
-
-```powershell
-Get-Service mq-exporter-qm1
-& 'C:\Program Files\mq-exporter\qm1\mq-dist.exe' health --qmgr QM1 --url http://127.0.0.1:9157/metrics
-```
-
-## Configuration and health
-
-Both installers use the same precompiled configuration generator. It writes UTF-8
-JSON, a valid YAML representation read by IBM's YAML reader. Preserve JSON syntax
-when editing managed `config.json`; free-form YAML is not supported by the managed
-identity check. Examples use `QM1`, `APP.QUEUE` and `mq.example.com`.
-
-The listener defaults to `127.0.0.1`; there is no automatic firewall or TLS change.
-For a remote scraper, configure an appropriate listener and TLS deliberately.
-Use a protected password file with `--user/--password-file` or `-MQUser/-PasswordFile`.
-Do not store plaintext credentials in examples or source control.
-
-A running process or HTTP 200 is not proof of monitoring. The health helper matches
-exactly `ibmmq_qmgr_status` and exactly the requested `qmgr` label, accepting numeric
-forms such as `2e0` but rejecting malformed, duplicate and incomplete responses.
-Status `2` means connected/running; `0` reports loss of a previously established
-connection. A failed first connection exits `10` before the HTTP listener starts.
-Queue-series observations are reported separately and do not prove intended queue
-coverage. Compare observed queue names against your intended list.
-
-Empty-effective patterns are rejected, and exclusions such as `!SYSTEM.*` are
-preserved. Upstream's non-durable subscription admission check needs `30 + 5N`
-handles for N monitored queues: MAXHANDS=256 admits 45. Narrowing
-`queueSubscriptionSelector` does not change that check. Durable subscriptions need
-two distinct pre-existing QLOCAL reply queues as well as `durableSubPrefix`.
-This project never changes MAXHANDS, creates MQ objects or changes TLS policy.
-
-Keep `job="integrations/ibm-mq"` in the [scrape example](examples/alloy.alloy), because
-the Grafana IBM MQ integration dashboards select that job name.
-
-## Build machines and maintainers
-
-Build machines need Git, Go, Python 3.12+, just, shellcheck and PowerShell for checks;
-Linux builds additionally need Docker. Windows builds acquire a pinned GCC/binutils
-toolchain. IBM's SDK/client inputs are downloaded from IBM, checksum-pinned and
-kept in ignored build storage. Maintainers must have rights to use those inputs;
-their license is separate from this project's Apache-2.0 license.
-
-```bash
-just check
-just build-linux v0.1.0-rc.1
-# On a Windows build host:
-just build-windows v0.1.0-rc.1
-just release-index
-just public-check
-```
-
-The build uses upstream `v6.0.0`, commit
-`7bce9b8ef9ef513ff77688f022929843d5ba7eaf`, vendored mq-golang v5.7.2,
-`-mod=vendor`, `GOTOOLCHAIN=local`, and disabled module network access. See
-[maintenance](docs/maintaining.md), [installation safety](docs/safety.md), and
-[build input pins](build/inputs.json). SDK and toolchain inputs never enter release
-archives. Archives include notices, an SBOM and build evidence. GitHub release
-automation attests and publishes the tested bytes without rebuilding them.
+[Read the documentation](https://rknightion.github.io/mq-exporter-dist/) ·
+[Download releases](https://github.com/rknightion/mq-exporter-dist/releases) ·
+[Report a vulnerability](SECURITY.md)

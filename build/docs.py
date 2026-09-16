@@ -12,7 +12,7 @@ PAGES = {
     "README.md": "index.md",
     "SECURITY.md": "security.md",
     **{"docs/" + name + ".md": name + ".md" for name in (
-        "compatibility", "safety", "maintaining", "evidence", "candidate-notes", "release-v0.1.0", "prometheus", "otel")},
+        "compatibility", "safety", "prometheus", "otel", "linux", "windows", "configuration", "troubleshooting")},
 }
 
 
@@ -41,8 +41,9 @@ def main():
         text = render((ROOT / original).read_text(encoding="utf-8"))
         inspect(text.encode(), original)
         (source / destination).write_text(text, encoding="utf-8")
-    (source / "assets").mkdir()
+    shutil.copytree(ROOT / "site/assets", source / "assets")
     shutil.copyfile(ROOT / "site/style.css", source / "assets/style.css")
+    shutil.copyfile(ROOT / "site/site.js", source / "assets/site.js")
     output = stage / "html"
     build(load_config(config_file=str(ROOT / "mkdocs.yml"), docs_dir=str(source), site_dir=str(output)))
     for path in output.rglob("*"):

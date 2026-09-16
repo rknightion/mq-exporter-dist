@@ -6,7 +6,8 @@ Inspect staged files, artifacts and metadata for secrets and private material be
 any upload, commit or release. IBM MQ SDK/runtime files are build inputs only.
 
 This repository is explicitly exempt from Backlog. Do not initialize a tracker.
-Maintain implementation evidence and compatibility boundaries in `docs/`.
+Keep internal investigation records in ignored local storage. Public `docs/`
+contains user instructions and compatibility limits, not internal run histories.
 
 ## Task interface
 
