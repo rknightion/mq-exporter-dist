@@ -79,3 +79,8 @@ publish version sha: publish-check
 [group('release')]
 publish-check:
     python3 build/publish_check.py
+
+# Probe Server 2019 Hyper-V containers on a disposable Windows host (requires Docker).
+[group('check')]
+windows2019-probe:
+    powershell.exe -NoLogo -NoProfile -NonInteractive -File tests/windows2019-probe.ps1
