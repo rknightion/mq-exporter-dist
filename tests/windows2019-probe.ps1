@@ -6,6 +6,8 @@ $image = 'mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c
 Write-Output ('Host build: ' + [Environment]::OSVersion.Version.ToString())
 Get-WindowsFeature Hyper-V,Containers | Select-Object Name,InstallState | Format-Table
 Get-CimInstance Win32_Processor | Select-Object VMMonitorModeExtensions,VirtualizationFirmwareEnabled,SecondLevelAddressTranslationExtensions | Format-Table
+# Hosted images can have Docker installed but its service stopped.
+Start-Service -Name docker
 & docker version --format '{{.Server.Version}}'
 if ($LASTEXITCODE -ne 0) { throw 'Docker engine unavailable; container test did not run' }
 & docker info --format '{{.OSType}}'
