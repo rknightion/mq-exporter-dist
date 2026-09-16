@@ -39,5 +39,16 @@ Write-Output ('Verified Microsoft VC runtime ' + (Get-Item -LiteralPath $vcRedis
 Expand-Archive -LiteralPath $release -DestinationPath (Join-Path $work 'payload')
 Expand-Archive -LiteralPath $sdk -DestinationPath (Join-Path $work 'mq')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-smoke.ps1') -Destination $work
-& docker run --rm --network none --isolation=hyperv --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $image powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-smoke.ps1
+# Keep this context separate: SDK and exporter must never enter image layers.
+$context = Join-Path $work 'image'
+$null = New-Item -ItemType Directory -Path $context
+Copy-Item -LiteralPath $vcRedist -Destination $context
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019/Dockerfile') -Destination $context
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019/install-runtime.ps1') -Destination $context
+$testImage = 'mq-server2019-test:' + [Guid]::NewGuid().ToString('N')
+# Build networking permits Windows prerequisite setup; the smoke test stays offline.
+& docker build --isolation=hyperv --tag $testImage $context
+if ($LASTEXITCODE -ne 0) { throw 'Server 2019 prerequisite image build failed' }
+& docker image inspect $testImage --format '{{.Id}}'
+& docker run --rm --network none --isolation=hyperv --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-smoke.ps1
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 exporter smoke tests failed' }
