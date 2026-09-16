@@ -6,6 +6,12 @@ mq_prometheus only. Adding mq_otel requires new candidate bytes and fresh eviden
 it does not retroactively change that release. Prometheus and OTel ship as separate
 Linux/Windows archive pairs, never a combined exporter bundle.
 
+Four build-only v0.1.0-rc.3 candidates passed in run `35102719891` at
+`4510d3a41e23b2adbf3bddd89375675804299c8e`; hashes and CI artifact identities are in
+the [evidence ledger](evidence.md). The docs site is published. No stable tag or
+release has been created. The Server Core probe found missing VC runtime DLLs,
+and its prerequisite installer retry timed out before native exporter validation.
+
 ## Release acceptance
 
 - Build both unchanged IBM exporters at the pinned upstream commit. Validate each

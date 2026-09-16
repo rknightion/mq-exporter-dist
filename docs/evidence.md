@@ -97,8 +97,21 @@ startup checks did not run. Static inspection of the separately obtained MQ
 9.3.0.27 ZIP showed `mqm.dll` importing `VCRUNTIME140.dll`, and `mqe.dll` importing
 both that DLL and `VCRUNTIME140_1.dll`; neither runtime DLL is in the ZIP. This
 identifies a prerequisite to test, not yet proof that it is the only missing DLL.
-The next disposable probe supplies Microsoft's pinned x64 VC runtime 14.44.35211.0,
-checks SHA-256 and Authenticode on the host, and installs it only inside the guest.
+The [prerequisite-aware retry 35104463618](https://github.com/rknightion/mq-exporter-dist/actions/runs/35104463618)
+at `f0bafc255aeff0256ca679bb75f2633bef368b75` confirmed both VC runtime DLLs absent
+from the guest's System32. Microsoft's x64 VC runtime 14.44.35211.0 passed SHA-256
+and Authenticode verification on the host. Its guest installation did not return
+before the 20-minute job timeout: GitHub records the run as **cancelled**, not
+passed. Exporter loading, configuration parsing and startup checks were not reached
+in this retry. No production host was changed and no runtime files were published.
+
+Resume the disposable test by adding a bounded wait and bootstrapper/MSI diagnostic
+logging around the runtime installation in `tests/windows2019-smoke.ps1`, inspecting
+why it does not complete in the network-isolated guest, and rerunning
+`just windows2019-probe` on a disposable Windows 2022 host. Do not simply increase
+the timeout or claim the runtime prerequisite is the only remaining dependency.
+Then validate the exact candidate on an authorized full Server 2019 host with its
+existing MQ installation, dedicated service identity and live queue manager.
 
 ## Historical, unpublished candidate evidence
 

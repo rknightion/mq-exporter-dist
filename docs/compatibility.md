@@ -13,8 +13,8 @@ Container boot feasibility alone is not exporter proof.
 | Evidence layer | EL8 build userspace + MQ 9.3.0.27 client | EL9 userspace | RHEL 8.10 kernel 4.18 + local MQ | Windows Server 2019 |
 |---|---|---|---|---|
 | Compile unchanged upstream | Passed local and hosted CI | Same Linux artifact | Same Linux artifact | Built on Server 2022; target unvalidated |
-| Native loading / help | Passed local emulation and x86-64 CI | Passed exact CI archive, emulated x86-64 | Unavailable | Unavailable |
-| Actual upstream config reader | Passed generated bindings configuration | Passed exact CI archive | Unavailable | Unavailable |
+| Native loading / help | Passed local emulation and x86-64 CI | Passed exact CI archive, emulated x86-64 | Unavailable | Failed in bare Server Core (missing DLL); prerequisite retry timed out |
+| Actual upstream config reader | Passed generated bindings configuration | Passed exact CI archive | Unavailable | Not reached in Server Core probe |
 | Service lifecycle | Unavailable | Unavailable | Unavailable | Unavailable |
 | Real MQ connection and queue metrics | Unavailable | Unavailable | Unavailable | Unavailable |
 | Established connection loss / restart | Unavailable | Unavailable | Unavailable | Unavailable |
@@ -25,6 +25,9 @@ Hosted Windows Server 2022 compilation, native loading, upstream-reader parsing,
 PowerShell 5.1 Unicode configuration tests and synthetic SCM adapter lifecycle
 passed in candidate run `35089700000`. These establish build-host evidence only;
 neither the full Windows installer nor Server 2019 runtime acceptance is proven.
+The Server Core 2019 Hyper-V probe booted successfully but exposed missing native
+runtime prerequisites. The follow-up VC runtime bootstrap timed out before exporter
+tests; see the evidence ledger for both failed/cancelled run identities.
 See [exact hashes and run identities](evidence.md).
 
 ## Separate OTel candidate
