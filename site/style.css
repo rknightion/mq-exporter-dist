@@ -1,0 +1,16 @@
+:root { --mq-accent: #125c73; }
+body { font-size: 1rem; line-height: 1.7; }
+.navbar { background: #143642 !important; border-bottom: 3px solid #e9aa35; }
+.navbar-brand { font-weight: 750; letter-spacing: -.02em; }
+h1, h2, h3 { font-weight: 700; letter-spacing: -.025em; }
+h1 { margin-bottom: 1.4rem; }
+h2 { margin-top: 2.4rem; padding-bottom: .5rem; border-bottom: 1px solid #bccbd0; }
+.admonition.warning { border: 1px solid #b67b00; border-left: 5px solid #b67b00; background: #fff4d5; color: #362600; padding: 1rem 1.3rem; border-radius: .4rem; }
+.admonition-title { font-weight: 750; }
+pre { padding: 1.1rem; border-radius: .4rem; overflow-x: auto; }
+table { display: block; overflow-x: auto; font-size: .92rem; }
+th, td { min-width: 9rem; vertical-align: top; }
+a { text-underline-offset: .16em; }
+a:focus-visible { outline: 3px solid #d28b00; outline-offset: 3px; }
+footer { font-size: .88rem; }
+@media (min-width: 992px) { .container { max-width: 1320px; } .col-md-9 { padding-left: 2.5rem; } }

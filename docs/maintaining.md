@@ -1,5 +1,19 @@
 # Maintaining the distribution
 
+## Documentation site
+
+`just docs-build` builds the GitHub Pages site from an explicit allowlist of the
+existing public Markdown. Its Python environment and hash-locked MkDocs packages
+are build-machine dependencies only. `just docs-lock` refreshes the lock after a
+reviewed version change. Generated site output is privacy-scanned before upload.
+The Documentation workflow builds pull requests and deploys only main, through the
+`github-pages` environment. It does not publish binary releases.
+Local docs staging and previous outputs stay in `.work/docs-*` and
+`.work/site-previous-*` for maintainer-managed retention; the build never deletes
+an existing output. Hosted runners dispose of their ephemeral workspaces.
+
+## Exporter releases
+
 1. Resolve the proposed upstream tag against IBM's remote and pin its exact commit.
    Review upstream changes, its Go minimum, vendored mq-golang version and all
    LICENSE/NOTICE files. Build a fresh pinned checkout, never an existing working
@@ -30,8 +44,13 @@
    and commit/push the exact reviewed source before building release archives.
 
 Use **Candidate release** to build both platforms at the workflow's exact SHA.
-It builds once, checks the bytes, uploads those same archives, verifies their hashes,
+Its matrix builds each exporter separately: four archives, one platform pair per
+exporter. The `publish` input defaults to false, retaining build-only CI candidates.
+When publication is explicitly enabled, it checks the bytes, verifies their hashes,
 checks SDK integrity records against the pins, attests them and creates a prerelease.
+Locally use `just build-linux VERSION otel` or `just build-windows VERSION otel`;
+omitting the exporter selects Prometheus. Each archive has exactly one collector
+and a configuration checker built from that collector's own upstream `config.go`.
 
 It never rebuilds at publication. Artifact
 metadata includes the exact distribution SHA and upstream SHA. SDK/runtime files

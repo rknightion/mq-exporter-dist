@@ -5,6 +5,9 @@ go_version := "1.27.1"
 # renovate: datasource=python-version depName=python
 python_version := "3.14"
 
+# renovate: datasource=pypi depName=mkdocs
+mkdocs_version := "1.6.1"
+
 # List supported tasks.
 default:
     @just --list
@@ -43,7 +46,7 @@ test:
 
 # Run the pre-commit gate.
 [group('check')]
-check: fmt-check lint test
+check: fmt-check lint test docs-build
 
 # Build pinned Linux candidate archives (requires Docker).
 [group('build')]
@@ -84,3 +87,19 @@ publish-check:
 [group('check')]
 windows2019-probe:
     powershell.exe -NoLogo -NoProfile -NonInteractive -File tests/windows2019-probe.ps1
+
+# Refresh the documentation dependency lock (requires uv on the build machine).
+[group('gen')]
+docs-lock:
+    uv pip compile --generate-hashes --no-header --universal --python-version 3.12 --output-file site/requirements.txt - <<< 'mkdocs=={{ mkdocs_version }}'
+
+# Install hash-locked documentation tools on the build machine only.
+[group('dev')]
+docs-install:
+    python3 -m venv .work/docs-venv
+    .work/docs-venv/bin/python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r site/requirements.txt
+
+# Build and privacy-check the static documentation with strict link validation.
+[group('build')]
+docs-build: docs-install
+    .work/docs-venv/bin/python build/docs.py

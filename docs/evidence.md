@@ -2,7 +2,38 @@
 
 Status: candidate implementation delivered; no stable release acceptance.
 
-## Exact candidate evidence
+## Published candidate
+
+[v0.1.0-rc.1](https://github.com/rknightion/mq-exporter-dist/releases/tag/v0.1.0-rc.1)
+contains separate Linux and Windows Prometheus archives built from
+`ac1e4e90137c13c43416451a9bf836e46aa4f05a`, using Go 1.27.1.
+[Candidate run 35097054147](https://github.com/rknightion/mq-exporter-dist/actions/runs/35097054147)
+completed publication, including provenance, on 2026-09-16.
+
+| Published archive | SHA-256 recorded by GitHub |
+|---|---|
+| `mq-exporter-dist-v0.1.0-rc.1-linux-amd64.tar.gz` | `024262c2e0c9b64167c20d34bee26b407c30a1a6bdc5fef5fb9d35cfa9edcbee` |
+| `mq-exporter-dist-v0.1.0-rc.1-windows-amd64.zip` | `806c56e27f8b95914fab19006c53329f56801b2abc31df1dcba6dd845ec974b3` |
+
+These are not the earlier local candidate bytes. The published package does not
+contain mq_otel. Stable v0.1.0 publication is held for target-platform acceptance;
+see [release preparation](release-v0.1.0.md).
+
+Both published archives were downloaded again, SHA-256 matched against the release,
+and `gh attestation verify --repo rknightion/mq-exporter-dist` verified their SLSA
+provenance. The verified statement names both hashes and resolves the source to
+`ac1e4e90137c13c43416451a9bf836e46aa4f05a`.
+
+## Server 2019 container feasibility
+
+[Probe 35098145869](https://github.com/rknightion/mq-exporter-dist/actions/runs/35098145869),
+at `4e81305f5c21fe90f8e8ec41ae79cad8fc1ba309`, successfully booted Server Core 2019
+under Hyper-V isolation on the Windows Server 2022 hosted runner. The pinned image
+is `mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5`.
+Guest OS reported build 17763 and PowerShell 5.1.17763.9245. This run proves container
+feasibility only: no exporter, installer or live MQ test ran inside it.
+
+## Historical, unpublished candidate evidence
 
 Candidate **v0.1.0-rc.2** was built from distribution commit
 `dc958206f6b2494ac4c9910a82c017894eea0beb` (initial implementation:
@@ -101,8 +132,8 @@ No unavailable check is a pass.
 
 SDK integrity records now accept IBM HTTPS downloads with pinned SHA-256 checks;
 the Windows ZIP also passed strict JAR signature verification. The earlier SDK
-publication blocker is resolved. Resume with the Candidate release workflow at
-the reviewed commit; platform acceptance remains provisional.
+publication blocker is resolved. The newer published candidate is listed above;
+platform acceptance remains provisional.
 Private inputs, SDK libraries and uncommitted local test fixtures are not release
 assets. No real queue manager, server or existing monitoring configuration was
 modified during these checks.

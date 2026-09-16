@@ -6,6 +6,11 @@ Windows targets Server 2019 amd64 (build 17763); the installer accepts only that
 server build. Its MQ version and DLL set must be measured separately. No older or
 newer Windows Server target is currently supported.
 
+The matrix below records **Prometheus** evidence, including historical candidates
+identified below. OTel is a separate package and must earn every layer independently;
+its native builds, target loading, reader, lifecycle, live MQ/OTLP and reconnection
+tests are not yet recorded. Container boot feasibility alone is not exporter proof.
+
 | Evidence layer | EL8 build userspace + MQ 9.3.0.27 client | EL9 userspace | RHEL 8.10 kernel 4.18 + local MQ | Windows Server 2019 |
 |---|---|---|---|---|
 | Compile unchanged upstream | Passed local and hosted CI | Same Linux artifact | Same Linux artifact | Built on Server 2022; target unvalidated |

@@ -5,9 +5,26 @@
 > This project is not affiliated with, endorsed by, sponsored by or supported by
 > IBM or Grafana Labs. Those companies have no responsibility for this distribution.
 
-Community packaging and installation for [IBM's MQ Prometheus exporter](https://github.com/ibm-messaging/mq-metric-samples/tree/v6.0.0/cmd/mq_prometheus).
+Community packaging and installation for [IBM's MQ exporters](https://github.com/ibm-messaging/mq-metric-samples/tree/v6.0.0/cmd).
 This is not an IBM-supported product or an official IBM release. The collector is
 IBM's unchanged source. Distribution versions are independent of upstream versions.
+
+[Documentation site](https://rknightion.github.io/mq-exporter-dist/) ·
+[Release downloads](https://github.com/rknightion/mq-exporter-dist/releases) ·
+[v0.1.0 acceptance](docs/release-v0.1.0.md)
+
+## Choose one exporter
+
+| Exporter | Delivery | Packages |
+|---|---|---|
+| [mq_prometheus](docs/prometheus.md) | Prometheus scrapes an HTTP endpoint | `mq-exporter-dist-VERSION-PLATFORM` |
+| [mq_otel](docs/otel.md) | Pushes metrics to your OTLP receiver | `mq-otel-dist-VERSION-PLATFORM` |
+
+These are **separate packages**, not a bundle. Each contains only its selected IBM
+exporter, matching configuration checker, installer and distribution helpers.
+The published v0.1.0-rc.1 has Prometheus packages only; OTel is being validated for
+the next candidate. Instructions below default to Prometheus. No additional IBM
+exporters are currently packaged.
 
 **Initial platform targets are provisional:** RHEL 8.10 / glibc 2.28 and RHEL 9.x /
 glibc 2.34, Linux x86-64, IBM MQ 9.3.0.27 runtime compatibility; and Windows Server
