@@ -57,6 +57,7 @@ fi
 %systemd_postun %{name}@.service
 
 %files
+%defattr(-,root,root,-)
 %dir /usr/libexec/%{name}
 /usr/libexec/%{name}/*
 /usr/lib/systemd/system/%{name}@.service

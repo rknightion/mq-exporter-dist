@@ -145,6 +145,7 @@ def main():
         (work / "instance.service").write_text(unit(name, exporter))
         epoch = subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], cwd=ROOT, text=True).strip()
         command = ["docker", "run", "--rm", "--platform", "linux/amd64", "--network=none",
+                   "--user", f"{os.getuid()}:{os.getgid()}",
                    "-v", str(work) + ":/work", "-e", "SOURCE_DATE_EPOCH=" + epoch, image]
         subprocess.run(command + ["rpmbuild", "-bb", "--define", "_topdir /work/rpmbuild",
                                  "--define", "_buildhost reproducible.invalid", "--define", "use_source_date_epoch_as_buildtime 1",
@@ -154,7 +155,7 @@ def main():
         tooling = subprocess.check_output(command + ["rpm", "-qa", "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n"], text=True)
         # Decode the actual RPM payload and scan it before releasing any bytes.
         subprocess.run(command + ["bash", "-euo", "pipefail", "-c",
-                                 'mkdir /work/unpacked; cd /work/unpacked; rpm2cpio /work/rpmbuild/RPMS/x86_64/*.rpm | cpio -idm --quiet'], check=True)
+                                 'mkdir /work/unpacked; cd /work/unpacked; rpm2cpio /work/rpmbuild/RPMS/x86_64/*.rpm | cpio -idm --quiet --no-preserve-owner'], check=True)
         for path in (work / "unpacked").rglob("*"):
             if path.is_symlink():
                 raise ValueError("unexpected RPM link")
