@@ -4,6 +4,12 @@ set -euo pipefail
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 dnf -q -y install shadow-utils util-linux >/dev/null
 useradd --system mqmon
+# Copy the read-only runner-owned input into this disposable container. Never
+# chown the host bind mount or weaken the installer's ownership validation.
+mkdir /opt/mqm
+cp -R /sdk-input/. /opt/mqm/
+chown -R root:root /opt/mqm
+chmod go-w /opt/mqm
 mv /usr/bin/systemctl /usr/bin/systemctl.container-original
 cp /project/tests/mock-systemctl.sh /usr/bin/systemctl
 chmod 755 /usr/bin/systemctl

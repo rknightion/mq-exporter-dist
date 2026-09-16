@@ -220,8 +220,8 @@ def main():
         unpack(cc, work / "cc")
         env = os.environ.copy()
         env.update(GOTOOLCHAIN="local", GOPROXY="off", GOSUMDB="off", GOOS="windows", GOARCH="amd64", GOAMD64="v1", CGO_ENABLED="1",
-                   CC=str(work / "cc/mingw64/bin/gcc.exe"), CGO_CFLAGS='-O2 -march=x86-64 -mtune=generic -D_WIN64 -I"' + (work / "mq/Tools/c/include").as_posix() + '"',
-                   CGO_LDFLAGS='-L"' + (work / "mq/bin64").as_posix() + '" -static-libgcc')
+                   CC=str(work / "cc/mingw64/bin/gcc.exe"), CGO_CFLAGS='-O2 -march=x86-64 -mtune=generic -D_WIN64 "-I' + (work / "mq/Tools/c/include").as_posix() + '"',
+                   CGO_LDFLAGS='"-L' + (work / "mq/bin64").as_posix() + '" -static-libgcc')
         gobin = work / "toolchain/go/bin/go.exe"
         env["PATH"] = str(work / "cc/mingw64/bin") + ";" + env["PATH"]
         linker = run(str(work / "cc/mingw64/bin/ld.exe"), "--version", env=env).splitlines()[0]
@@ -247,11 +247,11 @@ def main():
         config = run(str(output / "mq-dist.exe"), "config", "--qmgr", "QM1", env=env)
         (output / "config.json").write_text(config, encoding="utf-8")
         run(str(output / "mq-config-check.exe"), "-f", str(output / "config.json"), env=env)
-        run("powershell.exe", "-NoProfile", "-File", str(ROOT / "tests/windows-runtime.ps1"), "-Output", str(output), "-MQPath", str(work / "mq"), env=env)
+        run(str(Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"), "-NoProfile", "-File", str(ROOT / "tests/windows-runtime.ps1"), "-Output", str(output), "-MQPath", str(work / "mq"), env=env)
         evidence = {"compiled": True, "loader_smoke": "Windows build host; NOT Server 2019 proof", "config_reader": "PASS: actual upstream initConfig", "service_lifecycle": "unavailable", "live_mq": "unavailable", "server_2019": "unavailable", "build_image": "windows-2022 hosted runner; toolchain archives pinned", "go": run(str(gobin), "version", env=env), "linker": linker, "compiler": run(str(work / "cc/mingw64/bin/gcc.exe"), "--version").splitlines()[0], "dll_imports": dlls}
     target = package(source, output, args.version, args.platform + "-amd64", commit, evidence)
     if args.platform == "linux":
-        subprocess.run(["docker", "run", "--rm", "--platform", "linux/amd64", "-v", str(ROOT) + ":/project:ro", "-v", str(ROOT / "dist") + ":/artifacts:ro", "-v", str(work / "mq") + ":/opt/mqm:ro", image,
+        subprocess.run(["docker", "run", "--rm", "--platform", "linux/amd64", "-v", str(ROOT) + ":/project:ro", "-v", str(ROOT / "dist") + ":/artifacts:ro", "-v", str(work / "mq") + ":/sdk-input:ro", image,
                         "bash", "/project/tests/linux-install.sh", "/artifacts/" + target.name, args.version], check=True)
     # Preserve evidence and licensed inputs instead of deleting them. Failed builds
     # remain at build-*; successful ones are clearly archived and never re-used.
