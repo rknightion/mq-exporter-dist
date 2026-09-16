@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PATTERNS = [rb"/" + rb"Users/[^/\s]+/", rb"[A-Za-z]:\\" + rb"Users\\[^\\\s]+\\",
             rb"/" + rb"home/[A-Za-z0-9._-]+/",
             rb"gh[pousr]_[A-Za-z0-9]{30,}", rb"github_pat_[A-Za-z0-9_]{40,}",
-            rb"-----BEGIN " + rb"(?:RSA |EC |OPENSSH )?PRIVATE KEY-----"]
+            rb"-----BEGIN " + rb"(?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
+            rb"-----BEGIN PGP " + rb"PRIVATE KEY BLOCK-----"]
 
 
 def inspect(data, label):

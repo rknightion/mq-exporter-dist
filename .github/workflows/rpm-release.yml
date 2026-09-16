@@ -1,0 +1,77 @@
+name: Signed RPM candidate
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run:
+        description: Successful unpublished Candidate run ID at this main commit
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: rpm-signing
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: '1.58.0'
+      - name: Verify source identity before retrieving keys
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.candidate_run }}
+        run: just rpm-sign-preflight "$SOURCE_RUN"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.candidate_run }}
+          artifact-ids: ${{ steps.source.outputs.artifact_ids }}
+          path: .work/unsigned-rpms
+          merge-multiple: true
+      - name: Prepare signing tools without key access
+        run: just build-rpm-signer
+      - name: Retrieve dedicated signing subkey
+        uses: rknightion/.github/.github/actions/bao-secret@e5fb83e8b9fac5d9bcca87c9f189ec3ea946de84 # v1.21.1
+        with:
+          role: rknightion-mq-exporter-dist-rpm-signing
+          path: rknightion/mq-exporter-dist-rpm-signing
+          tailscale-client-id: ${{ secrets.TS_WIF_CLIENT_ID }}
+          tailscale-audience: ${{ secrets.TS_WIF_AUDIENCE }}
+      - name: Sign verified copies and repository metadata
+        run: just sign-rpm .work/unsigned-rpms .work/signed-rpm-candidate
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signed-rpm-candidate
+          path: .work/signed-rpm-candidate/
+          if-no-files-found: error
+          retention-days: 14
+  verify:
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: '1.58.0'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: signed-rpm-candidate
+          path: .work/signed-rpm-candidate
+      - name: Verify signatures and strict repository trust on EL8 and EL9
+        run: just test-signed-rpm .work/signed-rpm-candidate

@@ -6,6 +6,16 @@
     "matchPackageNames": ["rpm-build"],
     "registryUrls": ["https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/"],
     "versioning": "rpm"
+  }, {
+    "matchDatasources": ["rpm"],
+    "matchPackageNames": ["rpm-sign"],
+    "registryUrls": ["https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/repodata/"],
+    "versioning": "rpm"
+  }, {
+    "matchDatasources": ["rpm"],
+    "matchPackageNames": ["createrepo_c"],
+    "registryUrls": ["https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/repodata/"],
+    "versioning": "rpm"
   }],
   "customManagers": [{
     "customType": "regex",

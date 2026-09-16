@@ -89,11 +89,16 @@ transactions are not native service or SELinux proof. Package removal must stop
 only its own instances; upgrades require an explicit administrator restart.
 
 A public yum/DNF repository is not enabled yet. The dedicated public signing key
-and expiry metadata are in [keys](../keys/README.md). Publication still requires a
-protected signing workflow, package signatures, signed
-repository metadata and a published key fingerprint. Sign and test the final
-bytes, generate metadata with `createrepo_c`, verify with `gpgcheck=1` and
-`repo_gpgcheck=1` on EL8/9, then publish immutable versioned repository snapshots.
+and expiry metadata are in [keys](../keys/README.md). After an unpublished Candidate
+run succeeds, dispatch **Signed RPM candidate** with its run ID at the same commit.
+The protected workflow signs copies of both RPMs, checks that payloads are unchanged,
+and signs `createrepo_c` metadata and checksums. It retains a candidate artifact;
+it does not publish a release or enable a public repository.
+
+The separate verification job checks package and metadata signatures, rejects
+tampering, and installs with `gpgcheck=1` and `repo_gpgcheck=1` on EL8/EL9 userspaces.
+`just test-signed-rpm DIRECTORY` runs those checks locally without private keys.
+Publication still requires native acceptance and immutable versioned snapshots.
 Keep prereleases opt-in. Do not tell users to disable signature verification to
 install an unsigned candidate. Offline users receive the same signed RPMs and key.
 

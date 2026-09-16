@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('packages', type=Path)
+    parser.add_argument('--signed', action='store_true')
     args = parser.parse_args()
     packages = args.packages.resolve()
     if len(list(packages.glob('*.rpm'))) != 2:
@@ -20,9 +21,13 @@ def main():
         subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '--build-arg', 'BASE=' + pins[key],
                         '-f', str(ROOT / 'build/rpm-test.Dockerfile'), '-t', tag, str(ROOT / 'build')], check=True)
         image = subprocess.check_output(['docker', 'image', 'inspect', tag, '--format', '{{.Id}}'], text=True).strip()
-        subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/amd64', '--network=none',
+        command = ['docker', 'run', '--rm', '--platform', 'linux/amd64', '--network=none',
                         '-e', 'MQ_DIST_RPM_TEST=1', '-v', str(packages) + ':/packages:ro',
-                        '-v', str(ROOT / 'tests') + ':/project/tests:ro', image, 'bash', '/project/tests/rpm-install.sh'], check=True)
+                        '-v', str(ROOT / 'keys') + ':/project/keys:ro',
+                        '-v', str(ROOT / 'tests') + ':/project/tests:ro', image]
+        if args.signed:
+            subprocess.run(command + ['bash', '/project/tests/rpm-signatures.sh'], check=True)
+        subprocess.run(command + ['bash', '/project/tests/rpm-install.sh'], check=True)
         print(platform + ': transaction tests passed; native SELinux/systemd not tested', flush=True)
 
 
