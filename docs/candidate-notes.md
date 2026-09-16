@@ -17,10 +17,16 @@ Archives contain precompiled executables, installers, notices, SBOM and build
 metadata. IBM MQ SDK/runtime libraries are not included. SHA256SUMS and GitHub
 provenance cover these exact candidate bytes. Review the compatibility matrix and
 per-artifact metadata before use. Native RHEL and Server 2019 lifecycle checks
-are described in [compatibility](compatibility.md); live MQ and local-bindings
-acceptance remain outstanding. Build metadata records build-time checks, not
+and live MQ 9.3.0.35 trial checks are described in [compatibility](compatibility.md).
+Exact MQ 9.3.0.27 server/local-bindings acceptance remains outstanding.
+Build metadata records build-time checks, not
 subsequent native validation.
 
 The rc.4 Windows installer fixes ACL inspection on Server 2019 by reading SIDs
 directly, without weakening write-permission checks. Older installer copies can
 fail when Windows cannot translate application-package SIDs to account names.
+
+The rc.5 Linux installer accepts IBM's native `mqm` ownership
+for the MQ installation directory only. It retains root ownership for parent
+directories and the exporter installation, rejects group/world-writable paths,
+and keeps the MQ 9.3.0.27 version requirement.

@@ -33,14 +33,15 @@ validation coverage. “Not tested” is not a pass.
 | Upstream configuration reader | Passed for both exporters | Passed | Passed, including Unicode paths |
 | Install, upgrade and service lifecycle | Simulated systemd tests | Passed with real systemd | Passed with real SCM and dedicated account |
 | Reboot startup and unavailable-MQ retries | Not covered by containers | Passed | Passed |
-| Live MQ connection and queue metrics | Not tested | Not tested | Not tested |
-| Recovery after losing an established MQ connection | Not tested | Not tested | Not tested |
+| Live MQ connection and queue metrics | Not tested | Passed with the runtime combinations below | Passed with MQ 9.3.0.35 |
+| Recovery after losing an established MQ connection | Not tested | Passed in local bindings and authenticated client mode | Passed in local bindings and authenticated client mode |
 
 Native tests used RHEL 8.10 with kernel `4.18.0-553.158.1.el8_10.x86_64`
 and glibc 2.28, RHEL 9.6 with kernel `5.14.0-570.132.1.el9_6.x86_64`
 and glibc 2.34, and Windows Server 2019 build 17763 with PowerShell 5.1.
-SELinux remained enforcing on both RHEL hosts. All three used the MQ 9.3.0.27
-client runtime; Windows also used Microsoft VC runtime 14.44.35211.0.
+SELinux remained enforcing on both RHEL hosts. Earlier loading and lifecycle
+checks used the MQ 9.3.0.27 client runtime; Windows also used Microsoft VC runtime
+14.44.35211.0. Subsequent live checks used a native MQ 9.3.0.35 trial server.
 
 The Linux lifecycle checks covered Prometheus rc.1-to-rc.3 upgrades and separate
 OTel rc.3 installation. Windows checks passed with the packaged rc.4 installers,
@@ -52,9 +53,36 @@ on a full server; use the corrected installer, not the rc.1 or rc.3 copy.
 Coverage includes preserved configuration and executable backups, rejected
 checksum and identity changes, independent instances, stop/start, automatic
 startup after reboot, and service removal without deleting configuration.
-These tests do not establish successful local bindings or remote MQ connections:
-no queue manager was present. TLS, queue metrics and OTLP delivery still require
-a licensed lab with a live queue manager.
+
+## Live MQ coverage and remaining limits
+
+Both rc.4 exporters passed these checks on RHEL 8.10, RHEL 9.6 and Server 2019:
+
+- Local bindings to a native MQ 9.3.0.35 queue manager under a non-administrator
+  service account with explicit MQ permissions.
+- Prometheus connection status and exact queue depth, alongside decoded OTLP/HTTP
+  queue metrics with matching queue-manager attributes and fresh timestamps.
+- Queue depth changing from 3 to 5 across MQ shutdown/restart, followed by exporter
+  service restarts. Prometheus retained its process and reported status 0 during
+  the outage; OTel exited and recovered through systemd or the SCM wrapper.
+- Authenticated, loopback TCP client connections. Linux loaded the MQ 9.3.0.27
+  redistributable client; Windows used the installed MQ 9.3.0.35 runtime. Both
+  exporters recovered after MQ shutdown/restart and service restarts, with queue
+  depth changing from 5 to 7. The excluded queue was absent from both outputs.
+
+The Linux local-bindings trial used a lab-only installer adaptation for the .35
+version and IBM's `mqm` directory ownership. The ownership check is corrected in
+rc.5; parent directories and the exporter installation still require
+root ownership. The shipped Linux installer continues to require MQ 9.3.0.27.
+It does not accept the .35 trial merely because these binary tests passed.
+The rc.5 exporter executables are byte-identical to those tested from rc.4;
+the rc.5 archives have not repeated the complete native installation cycle.
+
+**MQ 9.3.0.27 server/local-bindings acceptance remains untested.** A .27 client
+connecting to a .35 server does not establish it. MQ TLS, authenticated OTLP
+forwarding and non-loopback network paths are also untested. The OTLP receiver
+was local, not a Grafana Cloud destination. These results do not establish other
+MQ fix packs, operating-system versions or deployment configurations.
 
 The published Prometheus `v0.1.0-rc.1` Windows package also passed PE inspection,
 native loading, the actual upstream configuration reader and the expected exit
@@ -70,7 +98,8 @@ or host; the native-loading checks above do not bypass that requirement.
 
 Container checks alone do not establish host-kernel or full-server acceptance.
 The native tests above cover the listed kernel builds, not every RHEL update or
-MQ installation. Stable v0.1.0 remains unavailable until live MQ acceptance.
+MQ installation. Stable v0.1.0 remains unavailable until the remaining target
+acceptance is complete.
 
 ## Check your server
 

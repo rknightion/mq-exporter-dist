@@ -67,6 +67,30 @@ An existing CCDT can instead be supplied with `--mode client --ccdt URL`.
 Client mode still requires MQ native libraries. Local bindings mode requires the
 server installation that owns the local queue manager.
 
+### Redistributable client data directories
+
+An unpacked IBM client differs from a normally installed MQ runtime. It needs a
+writable service-account home for its `.mqm` registry and a data directory for
+client logs. The default home-based data path conflicts with `ProtectHome=true`.
+
+For a dedicated account whose actual home is already a private directory such as
+`/var/lib/mqmon`, an administrator-managed unit drop-in can provide:
+
+```ini
+[Service]
+StateDirectory=mq-exporter-qm1
+StateDirectoryMode=0700
+Environment="MQ_OVERRIDE_DATA_PATH=/var/lib/mq-exporter-qm1"
+ReadWritePaths=/var/lib/mqmon
+```
+
+Create the account's home with mode 0700 and ownership by that account. Use a
+different state-directory name per instance. Reload systemd and restart the unit
+after adding the drop-in. Do not move an existing account's home or disable
+`ProtectHome` as an automatic installer workaround. These settings are not needed
+merely because an exporter uses client mode with a normally installed MQ runtime.
+See IBM's [redistributable client notes](https://www.ibm.com/docs/en/ibm-mq/9.3.x?topic=linux-redistributable-clients).
+
 ## Multiple instances and updates
 
 Use a separate instance and port for each Prometheus exporter, for example

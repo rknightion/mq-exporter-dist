@@ -79,8 +79,11 @@ collection timestamps. Verify MQ connection and queue coverage separately.
 
 The pinned source exits nonzero when the initial MQ connection fails (normally
 exit 1, not Prometheus's exit 10). systemd and the SCM adapter retry failed starts
-after 15 seconds. Established-connection recovery and actual OTLP delivery still
-require an authorized live MQ test. Do not infer them from native loading.
+after 15 seconds. With the MQ 9.3.0.35 trial server, live tests verified actual
+OTLP/HTTP queue metrics and recovery through the service restart policy after an
+established MQ connection was lost. This is process restart, not an in-process
+reconnection guarantee. See [compatibility](compatibility.md) for runtime versions
+and untested transports.
 
 OTel distinguishes counters and gauges. Metric names and types may be transformed
 by your receiver, so existing Prometheus dashboards are not automatically compatible.

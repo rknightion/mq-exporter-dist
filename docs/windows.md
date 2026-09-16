@@ -83,4 +83,5 @@ If an update fails after stopping the service, the service can remain stopped.
 Inspect the error and backups before starting it. Arrange log rotation while the
 service is stopped. Native Server 2019 install, upgrade, service-account,
 stop/start and reboot checks have passed with the corrected rc.4 installer.
-Live MQ acceptance remains outstanding; see [compatibility](compatibility.md).
+Live local-bindings and authenticated client tests also passed with the MQ
+9.3.0.35 trial server. See [compatibility](compatibility.md) for the exact scope.
