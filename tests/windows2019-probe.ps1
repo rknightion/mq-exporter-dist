@@ -14,8 +14,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Docker engine unavailable; container test did 
 if ($LASTEXITCODE -ne 0) { throw 'Docker engine information unavailable' }
 & docker pull $image
 if ($LASTEXITCODE -ne 0) { throw 'Image pull failed; container test did not run' }
-$command = 'if ([Environment]::OSVersion.Version.Build -ne 17763) { exit 2 }; [Environment]::OSVersion.Version.ToString(); $PSVersionTable.PSVersion.ToString(); $os = Get-CimInstance Win32_OperatingSystem; $os | Select-Object Caption,Version,BuildNumber,ProductType | Format-List; Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | Select-Object ProductName,InstallationType,CurrentBuildNumber | Format-List; if ($os.BuildNumber -ne "17763" -or $os.ProductType -eq 1) { exit 3 }'
-& docker run --rm --network none --isolation=hyperv $image powershell.exe -NoLogo -NoProfile -NonInteractive -Command $command
+$command = 'if ([Environment]::OSVersion.Version.Build -ne 17763) { exit 2 }; [Environment]::OSVersion.Version.ToString(); $PSVersionTable.PSVersion.ToString(); Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,ProductType | Format-List; Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | Select-Object ProductName,InstallationType,CurrentBuildNumber | Format-List'
+$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+& docker run --rm --network none --isolation=hyperv $image powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand $encoded
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 Hyper-V container could not complete the probe; no product tests ran' }
 Write-Output 'PASS: Server 2019 kernel and PowerShell started under Hyper-V isolation. Product tests are a separate step.'
 
@@ -43,23 +44,25 @@ Expand-Archive -LiteralPath $sdk -DestinationPath (Join-Path $work 'mq')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-smoke.ps1') -Destination $work
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-install.ps1') -Destination $work
 # Retrieve previously built candidates, never rebuild different bytes for acceptance.
-foreach ($product in @('prometheus','otel')) {
-    $target = Join-Path $work $product
-    $prefix = 'mq-exporter-dist'
-    $expected = 'd83fc837dc971a1e16f72b8c63bb5482714633f83983026fd3ef4bbc04a0d897'
-    if ($product -eq 'otel') { $prefix = 'mq-otel-dist'; $expected = '30d6c55f8d2e6b6510c0fd1774caf19c046a16306a031306f79a3a9b752449da' }
-    $archive = Join-Path $target ($prefix + '-v0.1.0-rc.3-windows-amd64.zip')
-    # A retained local copy permits exact-byte reruns after CI artifact expiry.
-    # Never substitute a newer candidate when the original inputs are unavailable.
-    if ($env:MQ_PROBE_CANDIDATES) {
-        $null = New-Item -ItemType Directory -Path $target
-        Copy-Item -LiteralPath (Join-Path $env:MQ_PROBE_CANDIDATES ([IO.Path]::GetFileName($archive))) -Destination $archive
-    } else {
-        & gh run download 35102719891 --repo rknightion/mq-exporter-dist --name ('candidate-' + $product + '-windows') --dir $target
-        if ($LASTEXITCODE -ne 0) { throw 'Pinned candidates unavailable; set MQ_PROBE_CANDIDATES to retained rc.3 archives' }
+if ($env:MQ_PROBE_INSTALL_CYCLE -eq '1') {
+    foreach ($product in @('prometheus','otel')) {
+        $target = Join-Path $work $product
+        $prefix = 'mq-exporter-dist'
+        $expected = 'd83fc837dc971a1e16f72b8c63bb5482714633f83983026fd3ef4bbc04a0d897'
+        if ($product -eq 'otel') { $prefix = 'mq-otel-dist'; $expected = '30d6c55f8d2e6b6510c0fd1774caf19c046a16306a031306f79a3a9b752449da' }
+        $archive = Join-Path $target ($prefix + '-v0.1.0-rc.3-windows-amd64.zip')
+        # A retained local copy permits exact-byte reruns after CI artifact expiry.
+        # Never substitute a newer candidate when the original inputs are unavailable.
+        if ($env:MQ_PROBE_CANDIDATES) {
+            $null = New-Item -ItemType Directory -Path $target
+            Copy-Item -LiteralPath (Join-Path $env:MQ_PROBE_CANDIDATES ([IO.Path]::GetFileName($archive))) -Destination $archive
+        } else {
+            & gh run download 35102719891 --repo rknightion/mq-exporter-dist --name ('candidate-' + $product + '-windows') --dir $target
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned candidates unavailable; set MQ_PROBE_CANDIDATES to retained rc.3 archives' }
+        }
+        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected) { throw 'Pinned candidate hash mismatch' }
+        Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $target 'payload')
     }
-    if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected) { throw 'Pinned candidate hash mismatch' }
-    Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $target 'payload')
 }
 # Keep this context separate: SDK and exporter must never enter image layers.
 $context = Join-Path $work 'image'
@@ -75,5 +78,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Server 2019 prerequisite image build failed' }
 & docker run --rm --network none --isolation=hyperv --memory 4GB --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-smoke.ps1
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 exporter smoke tests failed' }
 # A separate disposable guest runs real account, ACL and SCM installation checks.
-& docker run --rm --network none --isolation=hyperv --memory 4GB --env MQ_DIST_DISPOSABLE_TEST=1 --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-install.ps1
-if ($LASTEXITCODE -ne 0) { throw 'Server 2019 installation cycle failed' }
+if ($env:MQ_PROBE_INSTALL_CYCLE -eq '1') {
+    & docker run --rm --network none --isolation=hyperv --memory 4GB --env MQ_DIST_DISPOSABLE_TEST=1 --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-install.ps1
+    if ($LASTEXITCODE -ne 0) { throw 'Server 2019 installation cycle failed' }
+} else { Write-Output 'NOT RUN: full installation cycle. Native loading smoke is not installer acceptance.' }

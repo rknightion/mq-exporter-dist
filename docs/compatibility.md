@@ -42,6 +42,11 @@ code 10 when MQ is unavailable in a Hyper-V-isolated Server Core 2019 container
 VC runtime 14.44.35211.0. This check does not cover the OTel package or a full
 exporter installation and service lifecycle on Server 2019.
 
+The installers target full servers, not container deployments. The tested Server
+Core image reports a workstation product type and is rejected by the installer's
+server-only platform check. Full installation acceptance requires a Server 2019 VM
+or host; the native-loading checks above do not bypass that requirement.
+
 EL8/EL9 containers do not establish operation on a RHEL host's kernel. Native
 RHEL 8.10 kernel 4.18 validation remains outstanding. A Server Core 2019 container
 also does not establish full-server installation, service-account permissions or

@@ -1,6 +1,11 @@
 name: Windows 2019 container probe
 on:
   workflow_dispatch:
+    inputs:
+      install-cycle:
+        description: 'Attempt the unmodified installer cycle (requires a guest with Server product identity)'
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -22,4 +27,5 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          MQ_PROBE_INSTALL_CYCLE: ${{ inputs.install-cycle && '1' || '0' }}
         run: just windows2019-probe
