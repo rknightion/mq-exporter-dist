@@ -38,3 +38,36 @@ func TestConfiguration(t *testing.T) {
 		t.Fatal("client settings in bindings mode")
 	}
 }
+
+func TestOTelConfiguration(t *testing.T) {
+	c := Config{Exporter: "otel", Endpoint: "https://otel.example.com:4318", QMgr: "QM1", Queues: "APP.*,!SYSTEM.*", Channels: "*", Mode: "bindings"}
+	b, err := Render(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v map[string]any
+	if err := json.Unmarshal(b, &v); err != nil {
+		t.Fatal(err)
+	}
+	if v["prometheus"] != nil || v["otel"].(map[string]any)["endpoint"] != c.Endpoint {
+		t.Fatal(string(b))
+	}
+	if v["otel"].(map[string]any)["insecure"] != "false" {
+		t.Fatal("TLS default lost")
+	}
+	for _, endpoint := range []string{"", "http://otel.example.com:4318", "HTTPS://otel.example.com:4318", "https://user:secret@otel.example.com", "bad\nendpoint", "otel.example.com", "otel.example.com:65536", "https://otel.example.com?token=secret"} {
+		c.Endpoint = endpoint
+		if _, err := Render(c); err == nil {
+			t.Fatalf("accepted invalid endpoint %q", endpoint)
+		}
+	}
+	c.Endpoint = "localhost:4317"
+	c.Insecure = true
+	if _, err := Render(c); err != nil {
+		t.Fatal(err)
+	}
+	c.Exporter = "unknown"
+	if _, err := Render(c); err == nil {
+		t.Fatal("accepted unknown exporter")
+	}
+}

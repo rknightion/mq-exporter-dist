@@ -26,7 +26,17 @@ func SameIdentity(expected, actual string) error {
 	if e != nil {
 		return fmt.Errorf("managed configuration must remain JSON (valid YAML): %w", e)
 	}
-	for section, keys := range map[string][]string{"connection": {"queueManager", "clientConnection", "channel", "connName", "ccdtUrl"}, "prometheus": {"port"}} {
+	sections := map[string][]string{"connection": {"queueManager", "clientConnection", "channel", "connName", "ccdtUrl"}, "prometheus": {"port"}}
+	if _, otel := a["otel"]; otel {
+		if a["prometheus"] != nil || b["prometheus"] != nil {
+			return fmt.Errorf("exporter identity differs")
+		}
+		delete(sections, "prometheus")
+		sections["otel"] = []string{"endpoint", "insecure"}
+	} else if b["otel"] != nil {
+		return fmt.Errorf("exporter identity differs")
+	}
+	for section, keys := range sections {
 		left, ok := a[section].(map[string]any)
 		if !ok {
 			return fmt.Errorf("missing expected section")

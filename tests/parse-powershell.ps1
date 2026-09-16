@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $failed = $false
-Get-ChildItem (Join-Path $PSScriptRoot '../install/*.ps1') | ForEach-Object {
+Get-ChildItem (Join-Path $PSScriptRoot '../install/*.ps1'), (Join-Path $PSScriptRoot '*.ps1') | ForEach-Object {
     $tokens = $null
     $errors = $null
     $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)

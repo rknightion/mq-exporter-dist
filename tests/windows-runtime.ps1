@@ -1,5 +1,5 @@
 #requires -Version 5.1
-param([Parameter(Mandatory=$true)][string]$Output, [Parameter(Mandatory=$true)][string]$MQPath)
+param([Parameter(Mandatory=$true)][string]$Output, [Parameter(Mandatory=$true)][string]$MQPath, [ValidateSet('prometheus','otel')][string]$Exporter = 'prometheus')
 $ErrorActionPreference = 'Stop'
 $utf8 = New-Object Text.UTF8Encoding($false)
 $oldPath = $env:PATH
@@ -9,7 +9,9 @@ $config = Join-Path $Output 'unicode-config.json'
 try {
     $passwordPath = Join-Path $Output ('credential-' + [char]0x03B1 + '.txt')
     [IO.File]::WriteAllText($passwordPath, 'synthetic-test-value', $utf8)
-    $json = & $helper config --qmgr QM1 --queues 'APP.*,!SYSTEM.*' --mode client --channel APP.SVRCONN --conn-name 'mq.example.com(1414)' --user monitor --password-file $passwordPath
+    $extra = @()
+    if ($Exporter -eq 'otel') { $extra = @('--exporter','otel','--otlp-endpoint','https://otel.example.com:4318') }
+    $json = & $helper config @extra --qmgr QM1 --queues 'APP.*,!SYSTEM.*' --mode client --channel APP.SVRCONN --conn-name 'mq.example.com(1414)' --user monitor --password-file $passwordPath
     if ($LASTEXITCODE -ne 0) { throw 'generator failed' }
     [IO.File]::WriteAllText($config, ($json -join "`n"), $utf8)
     $parsed = Get-Content -Raw -Encoding UTF8 -LiteralPath $config | ConvertFrom-Json

@@ -43,6 +43,7 @@ lint:
 test:
     GOTOOLCHAIN=local go test ./...
     python3 -m unittest discover -s tests -p 'test_*.py'
+    pwsh -NoProfile -File tests/installer-preflight.ps1
 
 # Run the pre-commit gate.
 [group('check')]
@@ -50,13 +51,13 @@ check: fmt-check lint test docs-build
 
 # Build pinned Linux candidate archives (requires Docker).
 [group('build')]
-build-linux version:
-    python3 build/build.py linux {{ quote(version) }}
+build-linux version exporter="prometheus":
+    python3 build/build.py linux {{ quote(version) }} --exporter {{ quote(exporter) }}
 
 # Build pinned Windows candidate archives on Windows.
 [group('build')]
-build-windows version:
-    python3 build/build.py windows {{ quote(version) }}
+build-windows version exporter="prometheus":
+    python3 build/build.py windows {{ quote(version) }} --exporter {{ quote(exporter) }}
 
 # Inspect public source and release payloads before upload.
 [group('check')]

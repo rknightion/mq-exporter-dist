@@ -9,6 +9,7 @@
   "mq_windows_sha256": "e1e7dcf2ae1b566b816953864ec140d2ff87ad2da32bbbd73ae58dadfdfed419",
   "mq_digest_source": "SHA-256 calculated from IBM HTTPS downloads; verification recorded in build/publisher-verification.json",
   "linux_image": "registry.access.redhat.com/ubi8/ubi@sha256:91e8320e4a77e25b086b70d534cd15dd3b404d23fb1a7e6fd5dc0d8274fc9926",
+  "linux_validation_image": "registry.access.redhat.com/ubi9/ubi@sha256:f3b9841ea7615b38fd271cf18ae235d8228d3369036eb175ded171c936808255",
   "windows_toolchain_url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r1.zip",
   "windows_toolchain_sha256": "c1f52294597c0b73786b2a78eb5d176d89226d2f21875eab75e783a8b1cefcc4",
   "windows_toolchain_digest_source": "Release .zip.sha256 asset",

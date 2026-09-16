@@ -62,6 +62,9 @@ func run() error {
 		return dist.SameIdentity(os.Args[2], os.Args[3])
 	case "config":
 		c := dist.Config{}
+		f.StringVar(&c.Exporter, "exporter", "prometheus", "prometheus or otel")
+		f.StringVar(&c.Endpoint, "otlp-endpoint", "", "OTLP HTTPS URL or gRPC host:port")
+		f.BoolVar(&c.Insecure, "otlp-insecure", false, "explicitly permit plaintext OTLP")
 		f.StringVar(&c.QMgr, "qmgr", "", "queue manager")
 		f.IntVar(&c.Port, "port", 9157, "port")
 		f.StringVar(&c.Queues, "queues", "APP.*,!SYSTEM.*,!AMQ.*", "patterns")

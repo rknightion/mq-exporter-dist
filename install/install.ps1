@@ -9,6 +9,8 @@ param(
     [string]$MQPath = 'C:\Program Files\IBM\MQ',
     [string]$InstallRoot = 'C:\Program Files\mq-exporter',
     [ValidateRange(1,65535)][int]$Port = 9157,
+    [ValidateSet('prometheus','otel')][string]$Exporter = 'prometheus',
+    [string]$OTLPEndpoint = '', [switch]$OTLPInsecure,
     [string]$Queues = 'APP.*,!SYSTEM.*,!AMQ.*', [string]$Channels = '*',
     [ValidateSet('bindings','client')][string]$Mode = 'bindings',
     [string]$Channel = '', [string]$ConnectionName = '', [string]$CCDT = '',
@@ -19,6 +21,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
+$exporterBinary = 'mq_' + $Exporter + '.exe'
+$prefix = 'mq-exporter-dist'
+$identityPort = $Port
+if ($Exporter -eq 'otel') {
+    if (-not $OTLPEndpoint) { throw 'OTLP endpoint required' }
+    $prefix = 'mq-otel-dist'
+    $identityPort = 0
+} elseif ($OTLPEndpoint -or $OTLPInsecure) { throw 'OTLP settings require otel exporter' }
 function Invoke-Native([string]$File, [string[]]$Arguments) {
     & $File @Arguments
     if ($LASTEXITCODE -ne 0) { throw ('Native command failed, exit ' + $LASTEXITCODE) }
@@ -85,7 +95,8 @@ if ($existing -and -not (Test-Path -LiteralPath (Join-Path $dest 'identity.json'
 if (-not $existing) {
     if (-not $ServiceCredential -or $ServiceCredential.UserName -ne $ServiceAccount) { throw 'Supply ServiceCredential for the specified dedicated account; grant Log on as a service beforehand' }
 }
-$identity = [ordered]@{qmgr=$QueueManager;port=$Port;account=$ServiceAccount;mq=$MQPath;mode=$Mode;channel=$Channel;connName=$ConnectionName;ccdt=$CCDT}
+$identity = [ordered]@{qmgr=$QueueManager;port=$identityPort;account=$ServiceAccount;mq=$MQPath;mode=$Mode;channel=$Channel;connName=$ConnectionName;ccdt=$CCDT}
+if ($Exporter -eq 'otel') { $identity.exporter = 'otel'; $identity.endpoint = $OTLPEndpoint; $identity.insecure = [bool]$OTLPInsecure }
 $identityText = $identity | ConvertTo-Json -Compress
 if (Test-Path -LiteralPath (Join-Path $dest 'identity.json')) {
     if ([IO.File]::ReadAllText((Join-Path $dest 'identity.json')) -ne $identityText -and -not ($Repoint -and $ReplaceConfig)) { throw 'Instance identity differs; use explicit Repoint and ReplaceConfig' }
@@ -93,7 +104,7 @@ if (Test-Path -LiteralPath (Join-Path $dest 'identity.json')) {
     if ($previous.account -ne $ServiceAccount) { throw 'Changing an existing SCM service account requires a separate administrator action' }
 }
 foreach ($file in @(Get-ChildItem -LiteralPath $InstallRoot -Filter identity.json -Recurse -ErrorAction SilentlyContinue)) {
-    if ($file.DirectoryName -ne $dest -and (Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json).port -eq $Port) { throw 'Port reserved by another instance' }
+    if ($Exporter -eq 'prometheus' -and $file.DirectoryName -ne $dest -and (Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json).port -eq $Port) { throw 'Port reserved by another instance' }
 }
 $mutex = New-Object Threading.Mutex($false, 'Global\mq-exporter-dist-install')
 if (-not $mutex.WaitOne(0)) { $mutex.Dispose(); throw 'Another installer is active' }
@@ -108,14 +119,14 @@ try {
         if ([IO.File]::ReadAllText((Join-Path $dest 'identity.json')) -ne $identityText -and -not ($Repoint -and $ReplaceConfig)) { throw 'Instance changed during preflight' }
     }
     foreach ($file in @(Get-ChildItem -LiteralPath $InstallRoot -Filter identity.json -Recurse -ErrorAction SilentlyContinue)) {
-        if ($file.DirectoryName -ne $dest -and (Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json).port -eq $Port) { throw 'Port reserved during preflight' }
+        if ($Exporter -eq 'prometheus' -and $file.DirectoryName -ne $dest -and (Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json).port -eq $Port) { throw 'Port reserved during preflight' }
     }
     if ($Archive -and -not $Checksums) { throw 'Archive requires Checksums' }
     # New-Item without Force refuses an existing path; cleanup needs ownership.
     $null = New-Item -ItemType Directory -Path $scratch
     $scratchCreated = $true
     Protect-Directory $scratch $sid
-    $asset = 'mq-exporter-dist-' + $Version + '-windows-amd64.zip'
+    $asset = $prefix + '-' + $Version + '-windows-amd64.zip'
     if (-not $Archive) {
         if ($Checksums) { throw 'Checksums requires Archive' }
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -133,7 +144,7 @@ try {
     }
     if ((Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash -ne $lines[0].Substring(0,64)) { throw 'Archive checksum mismatch' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $allowed = @('mq_prometheus.exe','mq-config-check.exe','mq-dist.exe','mq-service.exe','install.ps1','diagnose.ps1','LICENSE','THIRD-PARTY-NOTICES.txt','build-metadata.json','sbom.cdx.json')
+    $allowed = @($exporterBinary,'mq-config-check.exe','mq-dist.exe','mq-service.exe','install.ps1','diagnose.ps1','LICENSE','THIRD-PARTY-NOTICES.txt','build-metadata.json','sbom.cdx.json')
     $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
     $payload = Join-Path $scratch 'payload'
     $null = New-Item -ItemType Directory -Path $payload
@@ -150,8 +161,9 @@ try {
     $metadata = Get-Content -LiteralPath (Join-Path $payload 'build-metadata.json') -Raw | ConvertFrom-Json
     if ($metadata.distribution_version -ne $Version -or $metadata.platform -ne 'windows-amd64') { throw 'Release metadata mismatch' }
     $helper = Join-Path $payload 'mq-dist.exe'
-    Invoke-Native $helper @('inspect','--platform','windows',(Join-Path $payload 'mq_prometheus.exe'))
+    Invoke-Native $helper @('inspect','--platform','windows',(Join-Path $payload $exporterBinary))
     $argsConfig = @('config','--qmgr',$QueueManager,'--port',"$Port",'--queues',$Queues,'--channels',$Channels,'--mode',$Mode)
+    if ($Exporter -eq 'otel') { $argsConfig += @('--exporter','otel','--otlp-endpoint',$OTLPEndpoint,('--otlp-insecure=' + ([bool]$OTLPInsecure).ToString().ToLowerInvariant())) }
     foreach ($pair in @(@('--channel',$Channel),@('--conn-name',$ConnectionName),@('--ccdt',$CCDT),@('--user',$MQUser),@('--password-file',$PasswordFile))) {
         if ($pair[1]) { $argsConfig += $pair }
     }
@@ -164,7 +176,7 @@ try {
     if ((Test-Path -LiteralPath $config) -and -not $ReplaceConfig) { $checkConfig = $config }
     Invoke-Native $helper @('same-identity',$candidateConfig,$checkConfig)
     $env:PATH = (Join-Path $MQPath 'bin64') + ';' + (Join-Path $env:SystemRoot 'System32')
-    Invoke-Native $helper @('smoke','--binary',(Join-Path $payload 'mq_prometheus.exe'))
+    Invoke-Native $helper @('smoke','--binary',(Join-Path $payload $exporterBinary))
     Invoke-Native $helper @('smoke','--binary',(Join-Path $payload 'mq-config-check.exe'),'--config',$checkConfig)
     $null = New-Item -ItemType Directory -Path $dest -Force
     Protect-Directory $dest $sid
@@ -174,11 +186,11 @@ try {
     $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($ServiceAccount,'Modify','ContainerInherit,ObjectInherit','None','Allow')))
     Set-Acl -LiteralPath $logs -AclObject $acl
     if ($existing -and $existing.Status -ne 'Stopped') { Stop-Service -Name $name; (Get-Service $name).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30)); $stopped = $true }
-    foreach ($binary in @('mq_prometheus.exe','mq-config-check.exe','mq-dist.exe','mq-service.exe')) { Invoke-Native $helper @('replace',(Join-Path $payload $binary),(Join-Path $dest $binary)) }
+    foreach ($binary in @($exporterBinary,'mq-config-check.exe','mq-dist.exe','mq-service.exe')) { Invoke-Native $helper @('replace',(Join-Path $payload $binary),(Join-Path $dest $binary)) }
     if (-not (Test-Path -LiteralPath $config) -or $ReplaceConfig) { Invoke-Native $helper @('replace',$candidateConfig,$config) }
     Write-Utf8 (Join-Path $scratch 'identity.json') $identityText
     Invoke-Native $helper @('replace',(Join-Path $scratch 'identity.json'),(Join-Path $dest 'identity.json'))
-    $command = '"' + (Join-Path $dest 'mq-service.exe') + '" -name "' + $name + '" -binary "' + (Join-Path $dest 'mq_prometheus.exe') + '" -config "' + $config + '" -mq "' + $MQPath + '" -logs "' + $logs + '"'
+    $command = '"' + (Join-Path $dest 'mq-service.exe') + '" -name "' + $name + '" -binary "' + (Join-Path $dest $exporterBinary) + '" -config "' + $config + '" -mq "' + $MQPath + '" -logs "' + $logs + '"'
     if (-not $existing) { $null = New-Service -Name $name -BinaryPathName $command -Credential $ServiceCredential -StartupType Automatic }
     else {
         $serviceObject = Get-CimInstance Win32_Service -Filter ("Name='" + $name + "'")
@@ -187,7 +199,8 @@ try {
     }
     if (-not $NoStart) { Start-Service -Name $name }
     Write-Output 'Installed. MQ connection and queue coverage are not yet verified.'
-    Write-Output ('Check: & "' + (Join-Path $dest 'mq-dist.exe') + '" health --qmgr "' + $QueueManager + '" --url "http://127.0.0.1:' + $Port + '/metrics"')
+    if ($Exporter -eq 'prometheus') { Write-Output ('Check: & "' + (Join-Path $dest 'mq-dist.exe') + '" health --qmgr "' + $QueueManager + '" --url "http://127.0.0.1:' + $Port + '/metrics"') }
+    else { Write-Output 'Verify queue-manager attributes and queue metrics at your OTLP receiver; no HTTP health listener is provided.' }
 } catch {
     if ($stopped) { Write-Warning 'The existing service was stopped. Inspect the error and backups before restarting it manually.' }
     throw

@@ -1,5 +1,13 @@
-Community distribution candidate of IBM's unchanged mq_prometheus v6.0.0.
-This is not an official IBM release or an IBM-supported product.
+Community distribution candidate of IBM's unchanged mq_prometheus and mq_otel
+v6.0.0, delivered as separate packages. Install only the exporter you need.
+This is not an official IBM release or an IBM-supported product. It is not
+affiliated with IBM or Grafana Labs and is provided without warranty.
+
+Prometheus archives use the `mq-exporter-dist-` prefix; OpenTelemetry archives use
+`mq-otel-dist-`. Each has a Linux tar.gz and Windows ZIP, with its own configuration
+reader. OTel requires an explicitly configured OTLP receiver and does not expose
+the Prometheus health endpoint. The earlier published v0.1.0-rc.1 contains
+Prometheus only; these notes describe the next candidate's scope.
 
 Initial targets: Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x / glibc 2.34,
 with an existing IBM MQ 9.3.0.27 runtime; Windows Server 2019 amd64, with its MQ

@@ -7,11 +7,19 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 # Explicitly precede the loader cache, even when inherited LD_LIBRARY_PATH is empty.
 # Do not change LD_PRELOAD or system loader configuration / monitoring injection.
 system_tool() { LD_LIBRARY_PATH=/usr/lib64:/lib64 "$@"; }
+exporter=prometheus # package default
+select_exporter() {
+  case "$exporter" in
+    prometheus) binary=mq_prometheus; prefix='mq-exporter-dist';;
+    otel) binary=mq_otel; prefix='mq-otel-dist';;
+    *) die 'exporter must be prometheus or otel';;
+  esac
+}
 verify_archive() (
   local archive=$1 checksums=$2 version=$3 scratch asset expected actual
   [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die 'invalid version'
   [[ -f $archive && -f $checksums ]] || die 'archive and checksum file required'
-  asset=mq-exporter-dist-$version-linux-amd64.tar.gz
+  asset=$prefix-$version-linux-amd64.tar.gz
   expected=$(awk -v n="$asset" '$2==n {print $1}' "$checksums")
   [[ $expected =~ ^[a-fA-F0-9]{64}$ ]] || die 'checksum missing or duplicated'
   expected=$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')
@@ -24,12 +32,13 @@ verify_archive() (
   [[ $(wc -l < "$scratch/names") -eq 9 ]] || die 'unexpected archive file count'
   [[ $(sort -u "$scratch/names" | wc -l) -eq 9 ]] || die 'duplicate archive entries'
   while IFS= read -r name; do
-    case "$name" in mq_prometheus|mq-config-check|mq-dist|install.sh|diagnose.sh|LICENSE|THIRD-PARTY-NOTICES.txt|build-metadata.json|sbom.cdx.json) ;; *) die 'unexpected archive path';; esac
+    case "$name" in "$binary"|mq-config-check|mq-dist|install.sh|diagnose.sh|LICENSE|THIRD-PARTY-NOTICES.txt|build-metadata.json|sbom.cdx.json) ;; *) die 'unexpected archive path';; esac
   done < "$scratch/names"
   while IFS= read -r entry; do [[ ${entry:0:1} == - ]] || die 'archive links and special files forbidden'; done < "$scratch/types"
 )
 if [[ ${1:-} == --verify-archive ]]; then
-  (($#==4)) || die '--verify-archive ARCHIVE CHECKSUMS VERSION'
+  (($#==4 || $#==5)) || die '--verify-archive ARCHIVE CHECKSUMS VERSION [prometheus|otel]'
+  exporter=${5:-$exporter}; select_exporter
   verify_archive "$2" "$3" "$4"
   printf 'Archive integrity and layout: PASS (no executable run)\n'
   exit 0
@@ -38,6 +47,7 @@ usage() {
   printf '%s\n' 'install.sh --version vX.Y.Z[-rc.N] --instance qm1 --qmgr QM1 --service-user mqmon' \
     '  [--archive FILE --checksums FILE] [--mq-path /opt/mqm] [--root /opt/mq-exporter]' \
     '  [--port 9157] [--queues APP.*,!SYSTEM.*,!AMQ.*] [--channels *]' \
+    '  [--exporter prometheus|otel] [--otlp-endpoint https://otel.example.com:4318] [--otlp-insecure]' \
     '  [--mode bindings|client --channel NAME --conn-name mq.example.com(1414)]' \
     '  [--ccdt URL] [--user MQUSER --password-file FILE]' \
     '  [--replace-config] [--repoint] [--no-start] [--list-qmgrs]'
@@ -45,6 +55,7 @@ usage() {
 version='' instance='' qmgr='' account='' archive='' checksums='' mq=/opt/mqm root=/opt/mq-exporter
 port=9157 queues='APP.*,!SYSTEM.*,!AMQ.*' channels='*' mode=bindings channel='' conn='' ccdt='' user='' password=''
 replace=0 repoint=0 start=1 list=0
+endpoint='' insecure=0
 while (($#)); do
   case "$1" in
     --help|-h) usage; exit 0;;
@@ -52,23 +63,32 @@ while (($#)); do
     --repoint) repoint=1; shift; continue;;
     --no-start) start=0; shift; continue;;
     --list-qmgrs) list=1; shift; continue;;
+    --otlp-insecure) insecure=1; shift; continue;;
   esac
   (($# >= 2)) || die 'option requires a value'
   case "$1" in
     --version) version=$2;; --instance) instance=$2;; --qmgr) qmgr=$2;; --service-user) account=$2;;
     --archive) archive=$2;; --checksums) checksums=$2;; --mq-path) mq=$2;; --root) root=$2;;
     --port) port=$2;; --queues) queues=$2;; --channels) channels=$2;; --mode) mode=$2;;
+    --exporter) exporter=$2;; --otlp-endpoint) endpoint=$2;;
     --channel) channel=$2;; --conn-name) conn=$2;; --ccdt) ccdt=$2;; --user) user=$2;; --password-file) password=$2;;
     *) die 'unknown option';;
   esac
   shift 2
 done
 if ((list)); then exec "$mq/bin/dspmq" -o installation; fi
+select_exporter
+if [[ $exporter == otel ]]; then
+  [[ -n $endpoint ]] || die 'OTLP endpoint required'
+  port=0
+elif [[ -n $endpoint || $insecure == 1 ]]; then die 'OTLP settings require otel exporter'; fi
 [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die 'explicit version required'
 [[ $instance =~ ^[a-z][a-z0-9-]{0,39}$ ]] || die 'invalid instance'
 [[ $account =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'existing service account required'
 [[ $qmgr =~ ^[A-Za-z0-9._/%]{1,48}$ ]] || die 'invalid queue manager'
-if [[ ! $port =~ ^[1-9][0-9]{0,4}$ ]] || ((port>65535)); then die 'port must be 1..65535'; fi
+if [[ $exporter == prometheus ]]; then
+  if [[ ! $port =~ ^[1-9][0-9]{0,4}$ ]] || ((port>65535)); then die 'port must be 1..65535'; fi
+fi
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || die 'Linux x86-64 required'
 glibc=$(system_tool getconf GNU_LIBC_VERSION)
 [[ $glibc == 'glibc 2.28' || $glibc == 'glibc 2.34' ]] || die 'initial targets require glibc 2.28 or 2.34'
@@ -107,7 +127,7 @@ if [[ -e $dest ]]; then
   perm=$(stat -c %a "$dest"); (( (8#$perm & 0022) == 0 )) || die 'instance directory must not be group/world writable'
 fi
 [[ ! -e /etc/systemd/system/$unit || -f $dest/identity ]] || die 'unit exists outside this installer'
-if [[ -d $root ]]; then
+if [[ -d $root && $exporter == prometheus ]]; then
   for p in "$root"/*/port; do
     [[ -f $p && $p != "$dest/port" ]] || continue
     [[ $(<"$p") != "$port" ]] || die 'port already reserved by another instance'
@@ -116,7 +136,7 @@ fi
 scratch=$(mktemp -d /var/tmp/mq-exporter-install.XXXXXXXX)
 # Only the uniquely created directory belongs to this invocation.
 trap 'rm -rf -- "$scratch"' EXIT
-asset=mq-exporter-dist-$version-linux-amd64.tar.gz
+asset=$prefix-$version-linux-amd64.tar.gz
 if [[ -z $archive ]]; then
   [[ -z $checksums ]] || die 'checksums requires archive'
   base=https://github.com/rknightion/mq-exporter-dist/releases/download/$version
@@ -132,21 +152,25 @@ verify_archive "$archive" "$checksums" "$version"
 mkdir "$scratch/payload"
 tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$scratch/payload"
 helper=$scratch/payload/mq-dist
-chmod 755 "$helper" "$scratch/payload/mq_prometheus" "$scratch/payload/mq-config-check"
-"$helper" inspect "$scratch/payload/mq_prometheus"
+chmod 755 "$helper" "$scratch/payload/$binary" "$scratch/payload/mq-config-check"
+"$helper" inspect "$scratch/payload/$binary"
 "$helper" metadata "$scratch/payload/build-metadata.json" "$version" linux-amd64
-"$helper" config --qmgr "$qmgr" --port "$port" --queues "$queues" --channels "$channels" --mode "$mode" --channel "$channel" --conn-name "$conn" --ccdt "$ccdt" --user "$user" --password-file "$password" > "$scratch/config.json"
+extra=()
+if [[ $exporter == otel ]]; then extra=(--exporter otel --otlp-endpoint "$endpoint" "--otlp-insecure=$([[ $insecure == 1 ]] && printf true || printf false)"); fi
+"$helper" config "${extra[@]}" --qmgr "$qmgr" --port "$port" --queues "$queues" --channels "$channels" --mode "$mode" --channel "$channel" --conn-name "$conn" --ccdt "$ccdt" --user "$user" --password-file "$password" > "$scratch/config.json"
 for value in "$qmgr" "$port" "$account" "$mq" "$mode" "$channel" "$conn" "$ccdt"; do
   [[ $value != *$'\n'* && $value != *$'\r'* ]] || die 'control character in identity'
   printf '%s\n' "$value"
 done > "$scratch/identity"
+# Keep the legacy Prometheus identity byte-for-byte compatible.
+if [[ $exporter == otel ]]; then printf '%s\n' otel "$endpoint" "$insecure" >> "$scratch/identity"; fi
 if [[ -e $dest/identity ]] && ! cmp -s "$dest/identity" "$scratch/identity"; then
   ((repoint && replace)) || die 'instance identity differs; explicit --repoint --replace-config required'
 fi
 config=$scratch/config.json
 if [[ -e $dest/config.json && $replace == 0 ]]; then config=$dest/config.json; fi
 "$helper" same-identity "$scratch/config.json" "$config"
-env LD_BIND_NOW=1 LD_LIBRARY_PATH="$mq/lib64:/usr/lib64:/lib64" timeout 20 "$scratch/payload/mq_prometheus" --help >/dev/null 2>&1 || die 'exporter load/smoke check failed'
+env LD_BIND_NOW=1 LD_LIBRARY_PATH="$mq/lib64:/usr/lib64:/lib64" timeout 20 "$scratch/payload/$binary" --help >/dev/null 2>&1 || die 'exporter load/smoke check failed'
 # The reader must run as the intended service user, with no inherited MQ overrides.
 chmod 755 "$scratch" "$scratch/payload"
 chown "$account" "$scratch/config.json"; chmod 600 "$scratch/config.json"
@@ -158,12 +182,12 @@ flock -n 9 || die 'another installer is active'
 # Recheck reservations after obtaining the install lock.
 for p in "$root"/*/port; do
   [[ -f $p && $p != "$dest/port" ]] || continue
-  [[ $(<"$p") != "$port" ]] || die 'port reserved by another instance'
+  [[ $exporter == otel || $(<"$p") != "$port" ]] || die 'port reserved by another instance'
 done
 if [[ -e $dest/identity ]] && ! cmp -s "$dest/identity" "$scratch/identity"; then
   ((repoint && replace)) || die 'instance changed during preflight'
 fi
-for name in mq_prometheus mq-config-check mq-dist; do "$helper" replace "$scratch/payload/$name" "$dest/$name"; done
+for name in "$binary" mq-config-check mq-dist; do "$helper" replace "$scratch/payload/$name" "$dest/$name"; done
 if [[ ! -e $dest/config.json || $replace == 1 ]]; then
   "$helper" replace "$scratch/config.json" "$dest/config.json"
   chown "$account" "$dest/config.json"; chmod 600 "$dest/config.json"
@@ -181,7 +205,7 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 User=$account
-ExecStart="$dest/mq_prometheus" -f "$dest/config.json"
+ExecStart="$dest/$binary" -f "$dest/config.json"
 Environment="LD_LIBRARY_PATH=$mq/lib64:/usr/lib64:/lib64"
 Restart=on-failure
 RestartSec=15s
@@ -204,4 +228,6 @@ systemctl daemon-reload
 systemctl enable "$unit"
 if ((start)); then systemctl restart "$unit"; fi
 printf 'Installed %s, instance %s. Connection and queue coverage are not yet verified.\n' "$version" "$instance"
-printf 'Check: "%s/mq-dist" health --qmgr "%s" --url "http://127.0.0.1:%s/metrics"\n' "$dest" "$qmgr" "$port"
+if [[ $exporter == prometheus ]]; then
+  printf 'Check: "%s/mq-dist" health --qmgr "%s" --url "http://127.0.0.1:%s/metrics"\n' "$dest" "$qmgr" "$port"
+else printf 'Verify queue-manager attributes and queue metrics at your OTLP receiver; no HTTP health listener is provided.\n'; fi

@@ -86,7 +86,7 @@ def notices(source):
     return "\n\n".join("===== " + str(p.relative_to(source)) + " =====\n" + p.read_text(errors="replace") for p in files)
 
 
-def sbom(source, version, platform):
+def sbom(source, version, platform, exporter="prometheus"):
     components = []
     roots = [source]
     if platform == "windows-amd64":
@@ -98,18 +98,26 @@ def sbom(source, version, platform):
             if m and (m[1], m[2]) not in seen:
                 seen.add((m[1], m[2]))
                 components.append({"type": "library", "name": m[1], "version": m[2], "purl": "pkg:golang/" + m[1] + "@" + m[2]})
-    return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "metadata": {"component": {"type": "application", "name": "mq-exporter-dist-" + platform, "version": version}}, "components": components}
+    name = "mq-exporter-dist" if exporter == "prometheus" else "mq-otel-dist"
+    return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "metadata": {"component": {"type": "application", "name": name + "-" + platform, "version": version}}, "components": components}
 
 
-def package(source, output, version, platform, commit, evidence):
+def package(source, output, version, platform, commit, evidence, exporter="prometheus"):
     # Exact allowlist: never package the SDK, source cache, environment or raw logs.
     windows = platform == "windows-amd64"
     ext = ".exe" if windows else ""
-    payload = {n + ext: (output / (n + ext)).read_bytes() for n in ["mq_prometheus", "mq-config-check", "mq-dist"]}
+    binary = "mq_" + exporter
+    prefix = "mq-exporter-dist" if exporter == "prometheus" else "mq-otel-dist"
+    payload = {n + ext: (output / (n + ext)).read_bytes() for n in [binary, "mq-config-check", "mq-dist"]}
     if windows:
         payload["mq-service.exe"] = (output / "mq-service.exe").read_bytes()
     for name in (["install.ps1", "diagnose.ps1"] if windows else ["install.sh", "diagnose.sh"]):
-        payload[name] = (ROOT / "install" / name).read_bytes()
+        content = (ROOT / "install" / name).read_text()
+        if name == "install.sh":
+            content = content.replace("exporter=prometheus # package default", "exporter=" + exporter + " # package default")
+        elif name == "install.ps1":
+            content = content.replace("[string]$Exporter = 'prometheus'", "[string]$Exporter = '" + exporter + "'")
+        payload[name] = content.encode()
     payload["LICENSE"] = (ROOT / "LICENSE").read_bytes()
     payload["THIRD-PARTY-NOTICES.txt"] = notices(source).encode()
     if windows:
@@ -118,14 +126,14 @@ def package(source, output, version, platform, commit, evidence):
         if not licenses:
             raise RuntimeError("Windows toolchain license notices missing")
         payload["THIRD-PARTY-NOTICES.txt"] += ("\n\nWindows compiler runtime notices\n" + "\n\n".join(str(p.relative_to(ccroot)) + "\n" + p.read_text(errors="replace") for p in licenses)).encode()
-    payload["sbom.cdx.json"] = json.dumps(sbom(source, version, platform), indent=2, sort_keys=True).encode()
-    metadata = {"distribution_version": version, "distribution_commit": commit, "platform": platform, "inputs": PINS,
+    payload["sbom.cdx.json"] = json.dumps(sbom(source, version, platform, exporter), indent=2, sort_keys=True).encode()
+    metadata = {"distribution_version": version, "distribution_commit": commit, "platform": platform, "exporter": exporter, "inputs": PINS,
                 "compatibility": "provisional; see compatibility matrix", "evidence": evidence,
                 "payload_sha256": {n: hashlib.sha256(b).hexdigest() for n, b in payload.items()}}
     payload["build-metadata.json"] = json.dumps(metadata, indent=2, sort_keys=True).encode()
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
-    name = "mq-exporter-dist-" + version + "-" + platform + (".zip" if windows else ".tar.gz")
+    name = prefix + "-" + version + "-" + platform + (".zip" if windows else ".tar.gz")
     target = dist / name
     if target.exists():
         raise RuntimeError("output already exists; archive it before rebuilding")
@@ -141,7 +149,7 @@ def package(source, output, version, platform, commit, evidence):
             for n, b in sorted(payload.items()):
                 info = tarfile.TarInfo(n)
                 info.size = len(b)
-                info.mode = 0o755 if n in ["mq_prometheus", "mq-config-check", "mq-dist", "install.sh", "diagnose.sh"] else 0o644
+                info.mode = 0o755 if n in [binary, "mq-config-check", "mq-dist", "install.sh", "diagnose.sh"] else 0o644
                 t.addfile(info, io.BytesIO(b))
     (dist / (name + ".sha256")).write_text(digest(target) + "  " + name + "\n")
     (dist / (name + ".metadata.json")).write_bytes(payload["build-metadata.json"])
@@ -154,7 +162,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("platform", choices=["linux", "windows"])
     parser.add_argument("version")
+    parser.add_argument("--exporter", choices=["prometheus", "otel"], default="prometheus")
     args = parser.parse_args()
+    binary = "mq_" + args.exporter
+    config_args = [] if args.exporter == "prometheus" else ["--exporter", "otel", "--otlp-endpoint", "https://otel.example.com:4318"]
     if run("just", "--evaluate", "go_version", cwd=ROOT).strip('"') != PINS["go_version"]:
         raise RuntimeError("Go build input and task-interface versions differ")
     if not re.fullmatch(r"v\d+\.\d+\.\d+-rc\.\d+", args.version):
@@ -179,7 +190,7 @@ def main():
     output.mkdir()
     check = source / "dist-check"
     check.mkdir()
-    shutil.copyfile(source / "cmd/mq_prometheus/config.go", check / "config.go")
+    shutil.copyfile(source / "cmd" / binary / "config.go", check / "config.go")
     shutil.copyfile(ROOT / "build/configcheck.go.txt", check / "main.go")
     if args.platform == "linux":
         go = cache / "go-linux.tar.gz"
@@ -194,18 +205,24 @@ def main():
         def container(*cmd):
             return run(*(base + list(cmd)))
         flags = ["-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags=-buildid="]
-        container("go", "build", *flags, "-o", "/work/output/mq_prometheus", "./cmd/mq_prometheus")
+        container("go", "build", *flags, "-o", "/work/output/" + binary, "./cmd/" + binary)
         container("go", "build", *flags, "-o", "/work/output/mq-config-check", "./dist-check")
         container("bash", "-c", "cd /project && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-buildid= -o /work/output/mq-dist ./cmd/mq-dist")
-        for binary in ("mq_prometheus", "mq-config-check", "mq-dist"):
-            container("/work/output/mq-dist", "inspect", "/work/output/" + binary)
-        container("env", "LD_BIND_NOW=1", "/work/output/mq_prometheus", "--help")
-        container("bash", "-c", "/work/output/mq-dist config --qmgr QM1 > /work/output/config.json && /work/output/mq-config-check -f /work/output/config.json")
-        container("bash", "-c", "/work/output/mq_prometheus -f /work/output/config.json >/work/output/startup.log 2>&1; test $? -eq 10")
+        for executable in (binary, "mq-config-check", "mq-dist"):
+            container("/work/output/mq-dist", "inspect", "/work/output/" + executable)
+        container("env", "LD_BIND_NOW=1", "/work/output/" + binary, "--help")
+        (output / "config.json").write_text(container("/work/output/mq-dist", "config", "--qmgr", "QM1", *config_args), encoding="utf-8")
+        container("/work/output/mq-config-check", "-f", "/work/output/config.json")
+        exit_code = "10" if args.exporter == "prometheus" else "1"
+        container("bash", "-c", "/work/output/" + binary + " -f /work/output/config.json >/work/output/startup.log 2>&1; test $? -eq " + exit_code)
         container("bash", "-c", "mkdir /tmp/mq-conflict; ln -s /opt/mqm/lib64/libcurl.so /tmp/mq-conflict/libcurl.so.4; ! LD_LIBRARY_PATH=/tmp/mq-conflict curl --version | grep '^Protocols:.*https'; LD_LIBRARY_PATH=/usr/lib64:/lib64 curl --version | grep '^Protocols:.*https'")
+        validation = ["docker", "run", "--rm", "--network", "none", "--platform", "linux/amd64", "-v", str(output) + ":/output:ro", "-v", str(work / "mq") + ":/opt/mqm:ro", "-e", "LD_BIND_NOW=1", "-e", "LD_LIBRARY_PATH=/opt/mqm/lib64:/usr/lib64:/lib64", PINS["linux_validation_image"]]
+        run(*validation, "/output/" + binary, "--help")
+        run(*validation, "/output/mq-config-check", "-f", "/output/config.json")
         evidence = {"compiled": True, "loader_smoke": "EL8 build container, MQ client runtime", "config_reader": "PASS: actual upstream initConfig", "local_bindings": "unavailable", "live_mq": "unavailable", "kernel_4_18": "unavailable", "service_lifecycle": "unavailable", "build_image": image,
+                    "el9_userspace": "PASS: eager native loading and actual upstream config reader; host kernel shared",
                     "go": container("go", "version"), "compiler": container("gcc", "--version").splitlines()[0], "linker": container("ld", "--version").splitlines()[0], "rpm_inventory": container("rpm", "-qa", "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n").splitlines(),
-                    "elf": container("readelf", "-h", "-l", "-d", "--version-info", "/work/output/mq_prometheus"), "mq_imports": container("bash", "-c", "nm -D --undefined-only /work/output/mq_prometheus | grep MQ")}
+                    "elf": container("readelf", "-h", "-l", "-d", "--version-info", "/work/output/" + binary), "mq_imports": container("bash", "-c", "nm -D --undefined-only /work/output/" + binary + " | grep MQ")}
     else:
         if os.name != "nt":
             raise RuntimeError("Windows build requires a Windows build host (Server 2022 CI is build-only evidence)")
@@ -229,7 +246,7 @@ def main():
         if not match or tuple(map(int, match.groups())) < (2, 37):
             raise RuntimeError("Windows GCC requires binutils >= 2.37 (DWARF 5)")
         flags = ["-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags=-buildid="]
-        for name, pkg in [("mq_prometheus", "./cmd/mq_prometheus"), ("mq-config-check", "./dist-check")]:
+        for name, pkg in [(binary, "./cmd/" + binary), ("mq-config-check", "./dist-check")]:
             run(str(gobin), "build", *flags, "-o", str(output / (name + ".exe")), pkg, cwd=source, env=env)
         env["CGO_ENABLED"] = "0"
         run(str(gobin), "build", "-trimpath", "-buildvcs=false", "-ldflags=-buildid=", "-o", str(output / "mq-dist.exe"), "./cmd/mq-dist", cwd=ROOT, env=env)
@@ -237,22 +254,22 @@ def main():
         run(str(gobin), "build", *flags, "-o", str(output / "mq-service.exe"), ".", cwd=wrapper, env=env)
         shutil.copyfile(ROOT / "tests/service-child.go.txt", source / "dist-child.go")
         run(str(gobin), "build", *flags, "-o", str(output / "service-child.exe"), "dist-child.go", cwd=source, env=env)
-        imports = run(str(work / "cc/mingw64/bin/objdump.exe"), "-p", str(output / "mq_prometheus.exe"), env=env)
+        imports = run(str(work / "cc/mingw64/bin/objdump.exe"), "-p", str(output / (binary + ".exe")), env=env)
         dlls = re.findall(r"DLL Name:\s*(\S+)", imports)
         allowed = {"mqm.dll", "kernel32.dll", "msvcrt.dll", "ucrtbase.dll", "advapi32.dll", "ws2_32.dll", "ntdll.dll"}
         if any(d.lower() not in allowed and not d.lower().startswith("api-ms-win-") for d in dlls):
             raise RuntimeError("undeclared PE DLL import")
         env["PATH"] = str(work / "mq/bin64") + ";" + os.environ["SystemRoot"] + "\\System32"
-        run(str(output / "mq_prometheus.exe"), "--help", env=env)
-        config = run(str(output / "mq-dist.exe"), "config", "--qmgr", "QM1", env=env)
+        run(str(output / (binary + ".exe")), "--help", env=env)
+        config = run(str(output / "mq-dist.exe"), "config", "--qmgr", "QM1", *config_args, env=env)
         (output / "config.json").write_text(config, encoding="utf-8")
         run(str(output / "mq-config-check.exe"), "-f", str(output / "config.json"), env=env)
-        run(str(Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"), "-NoProfile", "-File", str(ROOT / "tests/windows-runtime.ps1"), "-Output", str(output), "-MQPath", str(work / "mq"), env=env)
+        run(str(Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"), "-NoProfile", "-File", str(ROOT / "tests/windows-runtime.ps1"), "-Output", str(output), "-MQPath", str(work / "mq"), "-Exporter", args.exporter, env=env)
         evidence = {"compiled": True, "loader_smoke": "Windows build host; NOT Server 2019 proof", "config_reader": "PASS: actual upstream initConfig", "service_lifecycle": "unavailable", "live_mq": "unavailable", "server_2019": "unavailable", "build_image": "windows-2022 hosted runner; toolchain archives pinned", "go": run(str(gobin), "version", env=env), "linker": linker, "compiler": run(str(work / "cc/mingw64/bin/gcc.exe"), "--version").splitlines()[0], "dll_imports": dlls}
-    target = package(source, output, args.version, args.platform + "-amd64", commit, evidence)
+    target = package(source, output, args.version, args.platform + "-amd64", commit, evidence, args.exporter)
     if args.platform == "linux":
         subprocess.run(["docker", "run", "--rm", "--platform", "linux/amd64", "-v", str(ROOT) + ":/project:ro", "-v", str(ROOT / "dist") + ":/artifacts:ro", "-v", str(work / "mq") + ":/sdk-input:ro", image,
-                        "bash", "/project/tests/linux-install.sh", "/artifacts/" + target.name, args.version], check=True)
+                        "bash", "/project/tests/linux-install.sh", "/artifacts/" + target.name, args.version, args.exporter], check=True)
     # Preserve evidence and licensed inputs instead of deleting them. Failed builds
     # remain at build-*; successful ones are clearly archived and never re-used.
     completed = workroot / "completed"

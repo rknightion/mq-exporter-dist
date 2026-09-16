@@ -6,6 +6,10 @@ on:
         description: 'Candidate version, for example v0.1.0-rc.1'
         required: true
         type: string
+      publish:
+        description: 'Publish a prerelease after successful tests (otherwise retain CI candidates only)'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -19,8 +23,16 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: linux
+            exporter: prometheus
           - os: windows-2022
             platform: windows
+            exporter: prometheus
+          - os: ubuntu-24.04
+            platform: linux
+            exporter: otel
+          - os: windows-2022
+            platform: windows
+            exporter: otel
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -48,17 +60,19 @@ jobs:
         env:
           DIST_VERSION: ${{ inputs.version }}
           DIST_PLATFORM: ${{ matrix.platform }}
-        run: just "build-$DIST_PLATFORM" "$DIST_VERSION"
+          DIST_EXPORTER: ${{ matrix.exporter }}
+        run: just "build-$DIST_PLATFORM" "$DIST_VERSION" "$DIST_EXPORTER"
       - name: Inspect public payload
         shell: bash
         run: just public-check
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: candidate-${{ matrix.platform }}
+          name: candidate-${{ matrix.exporter }}-${{ matrix.platform }}
           path: dist/*
           if-no-files-found: error
           retention-days: 14
   publish:
+    if: inputs.publish
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
