@@ -1,6 +1,7 @@
 #requires -Version 5.1
 # Disposable hosted-runner feasibility probe, not product acceptance.
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 $image = 'mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5'
 Write-Output ('Host build: ' + [Environment]::OSVersion.Version.ToString())
 Get-WindowsFeature Hyper-V,Containers | Select-Object Name,InstallState | Format-Table
@@ -27,6 +28,14 @@ Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/rknightion/mq-export
 if ((Get-FileHash -LiteralPath $release -Algorithm SHA256).Hash -ne '806c56e27f8b95914fab19006c53329f56801b2abc31df1dcba6dd845ec974b3') { throw 'Published candidate hash mismatch' }
 Invoke-WebRequest -UseBasicParsing -Uri ('https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/' + $pins.mq_sdk_version + '-IBM-MQC-Redist-Win64.zip') -OutFile $sdk
 if ((Get-FileHash -LiteralPath $sdk -Algorithm SHA256).Hash -ne $pins.mq_windows_sha256) { throw 'SDK hash mismatch' }
+$vcRedist = Join-Path $work 'vc_redist.x64.exe'
+# Version 14.44.35211.0, resolved from Microsoft's VS 2022 download route.
+# A test prerequisite only: never included in public exporter payloads.
+Invoke-WebRequest -UseBasicParsing -Uri 'https://download.visualstudio.microsoft.com/download/pr/bd1c8d9d-ba95-4eee-bc6e-df1fcc876373/CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/VC_redist.x64.exe' -OutFile $vcRedist
+if ((Get-FileHash -LiteralPath $vcRedist -Algorithm SHA256).Hash -ne 'cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b') { throw 'VC runtime hash mismatch' }
+$signature = Get-AuthenticodeSignature -LiteralPath $vcRedist
+if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch '(^|,\s*)O=Microsoft Corporation(,|$)') { throw 'VC runtime publisher verification failed' }
+Write-Output ('Verified Microsoft VC runtime ' + (Get-Item -LiteralPath $vcRedist).VersionInfo.FileVersion)
 Expand-Archive -LiteralPath $release -DestinationPath (Join-Path $work 'payload')
 Expand-Archive -LiteralPath $sdk -DestinationPath (Join-Path $work 'mq')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-smoke.ps1') -Destination $work

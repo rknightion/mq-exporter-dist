@@ -7,9 +7,8 @@ server build. Its MQ version and DLL set must be measured separately. No older o
 newer Windows Server target is currently supported.
 
 The matrix below records **Prometheus** evidence, including historical candidates
-identified below. OTel is a separate package and must earn every layer independently;
-its native builds, target loading, reader, lifecycle, live MQ/OTLP and reconnection
-tests are not yet recorded. Container boot feasibility alone is not exporter proof.
+identified below. OTel is a separate package and earns each layer independently.
+Container boot feasibility alone is not exporter proof.
 
 | Evidence layer | EL8 build userspace + MQ 9.3.0.27 client | EL9 userspace | RHEL 8.10 kernel 4.18 + local MQ | Windows Server 2019 |
 |---|---|---|---|---|
@@ -27,6 +26,25 @@ PowerShell 5.1 Unicode configuration tests and synthetic SCM adapter lifecycle
 passed in candidate run `35089700000`. These establish build-host evidence only;
 neither the full Windows installer nor Server 2019 runtime acceptance is proven.
 See [exact hashes and run identities](evidence.md).
+
+## Separate OTel candidate
+
+Candidate run `35102719891` at `4510d3a41e23b2adbf3bddd89375675804299c8e` built
+mq_otel v0.1.0-rc.3 packages independently; they are not published releases.
+
+| Evidence layer | EL8 / EL9 userspaces | Windows Server 2022 build host | Target RHEL / Server 2019 |
+|---|---|---|---|
+| Compile unchanged upstream | Passed in EL8 | Passed | Target runtime validation separate |
+| Native loading / help | Passed both | Passed | Unavailable |
+| Actual OTel configuration reader | Passed both | Passed, including Unicode fixture | Unavailable |
+| Service lifecycle | Mocked installer commands only | Synthetic SCM child fixture only | Unavailable |
+| Real MQ queue metrics and OTLP receipt | Unavailable | Unavailable | Unavailable |
+| Established connection loss / restart | Unavailable | Unavailable | Unavailable |
+
+The same run refreshed Prometheus's EL8/EL9 loading and actual-reader evidence.
+OTel's initial unavailable-MQ exit 1 and Prometheus's exit 10 were tested in the
+network-isolated EL8 build userspace. These are not established-connection recovery
+tests. Neither exporter has native RHEL kernel 4.18 acceptance yet.
 
 ## Missing acceptance commands
 

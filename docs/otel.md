@@ -5,7 +5,10 @@ pushes MQ metrics over OTLP. This community package uses the same pinned IBM tag
 and vendored dependencies as the Prometheus package, without changing its
 collector. It is not affiliated with IBM or Grafana Labs and comes without warranty.
 
-**Candidate implementation: not included in published v0.1.0-rc.1.** Download links
+**Candidate builds passed; not included in published v0.1.0-rc.1.** The separate
+v0.1.0-rc.3 packages passed Linux and Windows build-host validation in
+[CI run 35102719891](https://github.com/rknightion/mq-exporter-dist/actions/runs/35102719891).
+They remain CI artifacts, not a release. Download links
 will appear in [GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases)
 only after a new candidate is explicitly published. Do not use the Prometheus
 archive as an OTel package. Initial platform targets and native MQ prerequisites

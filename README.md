@@ -40,6 +40,14 @@ libraries. MQ libraries and glibc are **not included**. Do not install a develop
 toolchain on the monitored server: Git, Go, GCC, SDK headers, Docker, jq, gh and Go
 module registry access are not needed.
 
+Windows also needs the native prerequisites of its installed MQ runtime. Import
+inspection of the MQ 9.3.0.27 client shows dependencies on `VCRUNTIME140.dll` and
+`VCRUNTIME140_1.dll` (Microsoft x64 Visual C++ v14 runtime). A bare Server Core image
+does not establish these prerequisites. Obtain the appropriate supported runtime
+from [Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+The exporter installer does not download or install it, and no Microsoft runtime
+DLLs are bundled with the exporter.
+
 Linux installation needs Bash, systemd, GNU coreutils/tar/gzip, util-linux
 (`flock`, `runuser`), and curl for online downloads. These are normally present on
 RHEL; the installer does not install packages. Windows installation needs elevated

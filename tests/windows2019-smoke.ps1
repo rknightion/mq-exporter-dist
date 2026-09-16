@@ -2,6 +2,18 @@
 # Read-only mounted binaries, disposable local config, no network and no live MQ.
 $ErrorActionPreference = 'Stop'
 if ([Environment]::OSVersion.Version.Build -ne 17763) { throw 'Wrong guest build' }
+foreach ($dll in @('vcruntime140.dll','vcruntime140_1.dll')) {
+    Write-Output ($dll + ' present before prerequisite installation: ' + (Test-Path -LiteralPath (Join-Path $env:SystemRoot ('System32\' + $dll))))
+}
+# Only this disposable, network-isolated guest is changed. Hash and Authenticode
+# were checked by the host before exposing the read-only input mount.
+$runtime = Start-Process -FilePath C:\input\vc_redist.x64.exe -ArgumentList @('/install','/quiet','/norestart') -Wait -PassThru
+if ($runtime.ExitCode -notin @(0,3010)) { throw ('VC runtime install failed: ' + $runtime.ExitCode) }
+foreach ($dll in @('vcruntime140.dll','vcruntime140_1.dll')) {
+    $path = Join-Path $env:SystemRoot ('System32\' + $dll)
+    if (-not (Test-Path -LiteralPath $path)) { throw ('Missing prerequisite after installation: ' + $dll) }
+    Write-Output ($dll + ' installed version: ' + (Get-Item -LiteralPath $path).VersionInfo.FileVersion)
+}
 $env:PATH = 'C:\input\mq\bin64;' + (Join-Path $env:SystemRoot 'System32')
 $helper = 'C:\input\payload\mq-dist.exe'
 & $helper inspect --platform windows C:\input\payload\mq_prometheus.exe
