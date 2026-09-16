@@ -8,16 +8,20 @@ newer Windows Server target is currently supported.
 
 | Evidence layer | EL8 build userspace + MQ 9.3.0.27 client | EL9 userspace | RHEL 8.10 kernel 4.18 + local MQ | Windows Server 2019 |
 |---|---|---|---|---|
-| Compile unchanged upstream | Passed initial local build | Same Linux artifact | Same Linux artifact | Pending Windows build |
-| Native loading / help | Passed, emulated x86-64 | Passed, emulated x86-64 | Unavailable | Unavailable |
-| Actual upstream config reader | Passed generated bindings configuration | Passed same generated configuration | Unavailable | Unavailable |
+| Compile unchanged upstream | Passed local and hosted CI | Same Linux artifact | Same Linux artifact | Built on Server 2022; target unvalidated |
+| Native loading / help | Passed local emulation and x86-64 CI | Passed exact CI archive, emulated x86-64 | Unavailable | Unavailable |
+| Actual upstream config reader | Passed generated bindings configuration | Passed exact CI archive | Unavailable | Unavailable |
 | Service lifecycle | Unavailable | Unavailable | Unavailable | Unavailable |
 | Real MQ connection and queue metrics | Unavailable | Unavailable | Unavailable | Unavailable |
 | Established connection loss / restart | Unavailable | Unavailable | Unavailable | Unavailable |
 
 The local Docker host is ARM64. EL8/EL9 container checks share its VM kernel and use
 x86-64 emulation. They do not validate a 4.18 kernel or native RHEL deployment.
-Hosted Windows Server 2022 builds, if successful, establish build-host loading only.
+Hosted Windows Server 2022 compilation, native loading, upstream-reader parsing,
+PowerShell 5.1 Unicode configuration tests and synthetic SCM adapter lifecycle
+passed in candidate run `35089700000`. These establish build-host evidence only;
+neither the full Windows installer nor Server 2019 runtime acceptance is proven.
+See [exact hashes and run identities](evidence.md).
 
 ## Missing acceptance commands
 

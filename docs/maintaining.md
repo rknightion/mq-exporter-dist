@@ -21,7 +21,10 @@
    RPM resolution is recorded but is not yet a fully archived reproducible toolchain.
 5. Run `just check`, the platform builds and all applicable acceptance layers. Rebuild
    independently and compare executable/archive hashes before claiming bit-for-bit
-   reproducibility. Current deterministic packaging alone does not prove that.
+   reproducibility. The initial Linux local/CI comparison matched every executable
+   but differed in metadata's constructed image identity. Whole-archive
+   reproducibility needs a reproducible final image or separation of that
+   invocation-specific identity into external provenance, followed by comparison.
    Run CodeRabbit on this public repository, inspect staged and generated content,
    and commit/push the exact reviewed source before building release archives.
 
