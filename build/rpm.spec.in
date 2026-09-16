@@ -54,7 +54,9 @@ fi
 %systemd_preun %{name}@.service
 
 %postun
-%systemd_postun %{name}@.service
+# The build host's macro can expand to nothing when it relies on file triggers
+# that are absent on a target host. Reload explicitly after removal or upgrade.
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root,-)

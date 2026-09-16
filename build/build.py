@@ -168,8 +168,8 @@ def main():
     config_args = [] if args.exporter == "prometheus" else ["--exporter", "otel", "--otlp-endpoint", "https://otel.example.com:4318"]
     if run("just", "--evaluate", "go_version", cwd=ROOT).strip('"') != PINS["go_version"]:
         raise RuntimeError("Go build input and task-interface versions differ")
-    if not re.fullmatch(r"v\d+\.\d+\.\d+-rc\.\d+", args.version):
-        raise ValueError("only candidate versions are enabled until stable acceptance is recorded")
+    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", args.version):
+        raise ValueError("expected an explicit vX.Y.Z or vX.Y.Z-rc.N distribution version")
     # Release automation must operate on committed source, including all packaging files.
     if run("git", "status", "--porcelain", cwd=ROOT):
         raise RuntimeError("commit and review distribution changes before building release bytes")

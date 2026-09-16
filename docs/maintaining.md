@@ -56,8 +56,9 @@ The Windows SCM adapter builds separately; it does not implement metrics.
 
 The Candidate release workflow builds all four archives at the selected commit.
 Its publication option defaults to false. When enabled, it verifies hashes,
-checks input receipts, attests the tested bytes and publishes a prerelease
-without rebuilding. Stable version strings remain disabled until target acceptance.
+checks input receipts, attests the tested bytes and publishes a release
+without rebuilding. Versions containing `-rc.N` are published as prereleases;
+`vX.Y.Z` versions are full releases. Review the compatibility limits before publishing.
 
 Archives include licenses, dependency notices, an SBOM and machine-readable build
 metadata. MQ SDK/runtime files are excluded. The SBOM lists vendored modules and

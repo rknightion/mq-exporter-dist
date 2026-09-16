@@ -34,7 +34,7 @@ validation coverage. “Not tested” is not a pass.
 | Install, upgrade and service lifecycle | Simulated systemd tests | Passed with real systemd | Passed with real SCM and dedicated account |
 | Reboot startup and unavailable-MQ retries | Not covered by containers | Passed | Passed |
 | Live MQ connection and queue metrics | Not tested | Passed with the runtime combinations below | Passed with MQ 9.3.0.35 |
-| Recovery after losing an established MQ connection | Not tested | Passed in local bindings and authenticated client mode | Passed in local bindings and authenticated client mode |
+| Recovery after losing an established MQ connection | Not tested | Passed in local bindings | Passed in local bindings |
 
 Native tests used RHEL 8.10 with kernel `4.18.0-553.158.1.el8_10.x86_64`
 and glibc 2.28, RHEL 9.6 with kernel `5.14.0-570.132.1.el9_6.x86_64`
@@ -43,12 +43,10 @@ SELinux remained enforcing on both RHEL hosts. Earlier loading and lifecycle
 checks used the MQ 9.3.0.27 client runtime; Windows also used Microsoft VC runtime
 14.44.35211.0. Subsequent live checks used a native MQ 9.3.0.35 trial server.
 
-The Linux lifecycle checks covered Prometheus rc.1-to-rc.3 upgrades and separate
-OTel rc.3 installation. Windows checks passed with the packaged rc.4 installers,
-including rc.1-to-rc.4 upgrades and separate rc.4 instances. Reboot checks used
-the same corrected installer with rc.3 binaries; all four rc.4 exporter binaries
-are byte-identical to rc.3. The older Windows installer failed an ACL identity lookup
-on a full server; use the corrected installer, not the rc.1 or rc.3 copy.
+Both exporters' `v6.0.0-rc.1` archives passed native installation, upgrades from
+`v0.1.0-rc.8`, reboot startup and service removal on all three platforms.
+These installer checks used the MQ 9.3.0.27 client runtime, without a running
+queue manager. Windows checks included paths containing spaces and Unicode.
 
 Coverage includes preserved configuration and executable backups, rejected
 checksum and identity changes, independent instances, stop/start, automatic
@@ -56,27 +54,32 @@ startup after reboot, and service removal without deleting configuration.
 
 ## Live MQ coverage and remaining limits
 
-Both rc.4 exporters passed these checks on RHEL 8.10, RHEL 9.6 and Server 2019:
+The `v6.0.0-rc.1` Linux RPMs and Windows archives passed these checks on the
+native hosts listed above:
 
 - Local bindings to a native MQ 9.3.0.35 queue manager under a non-administrator
   service account with explicit MQ permissions.
 - Prometheus connection status and exact queue depth, alongside decoded OTLP/HTTP
   queue metrics with matching queue-manager attributes and fresh timestamps.
-- Queue depth changing from 3 to 5 across MQ shutdown/restart, followed by exporter
-  service restarts. Prometheus retained its process and reported status 0 during
-  the outage; OTel exited and recovered through systemd or the SCM wrapper.
-- Authenticated, loopback TCP client connections. Linux loaded the MQ 9.3.0.27
-  redistributable client; Windows used the installed MQ 9.3.0.35 runtime. Both
-  exporters recovered after MQ shutdown/restart and service restarts, with queue
-  depth changing from 5 to 7. The excluded queue was absent from both outputs.
+- MQ shutdown/restart and exporter service restarts. Prometheus retained its
+  process and reported status 0 during the outage; OTel recovered through
+  systemd or the SCM wrapper. Both exporters reported the queue's new depth
+  after reconnection, matching an independent MQ inquiry.
 
-The Linux local-bindings trial used a lab-only installer adaptation for the .35
-version and IBM's `mqm` directory ownership. The ownership check is corrected in
-rc.5; parent directories and the exporter installation still require
-root ownership. The shipped Linux installer continues to require MQ 9.3.0.27.
-It does not accept the .35 trial merely because these binary tests passed.
-The rc.5 exporter executables are byte-identical to those tested from rc.4;
-the rc.5 archives have not repeated the complete native installation cycle.
+The signed RPMs passed installation and running-service upgrades on both RHEL
+hosts with SELinux enforcing. Upgrades preserved configuration and did not
+restart running exporter processes. The Linux archive installer still requires
+MQ 9.3.0.27; the RPM tests do not establish that this installer accepts .35.
+RPM reboot startup and recovery passed on both hosts. RHEL 8 also passed removal
+of both exporters with configuration retained. On RHEL 9, Prometheus exporter
+removal stopped its instances and removed enablement links, but systemd retained
+stale unit state. The package now explicitly reloads systemd after removal;
+the corrected scriptlet has not repeated the native RHEL 9 removal test.
+
+Earlier rc.4 binary tests also covered authenticated loopback client connections,
+MQ recovery and queue exclusions. Linux loaded the MQ 9.3.0.27 redistributable
+client against a .35 server; Windows used the installed .35 runtime. That client
+connection cycle has not been repeated with the final `v6.0.0-rc.1` packages.
 
 **MQ 9.3.0.27 server/local-bindings acceptance remains untested.** A .27 client
 connecting to a .35 server does not establish it. MQ TLS, authenticated OTLP
@@ -84,22 +87,14 @@ forwarding and non-loopback network paths are also untested. The OTLP receiver
 was local, not a Grafana Cloud destination. These results do not establish other
 MQ fix packs, operating-system versions or deployment configurations.
 
-The published Prometheus `v0.1.0-rc.1` Windows package also passed PE inspection,
-native loading, the actual upstream configuration reader and the expected exit
-code 10 when MQ is unavailable in a Hyper-V-isolated Server Core 2019 container
-(build 17763, PowerShell 5.1). This used the MQ 9.3.0.27 client and Microsoft x64
-VC runtime 14.44.35211.0. This check does not cover the OTel package or a full
-exporter installation and service lifecycle on Server 2019.
-
-The installers target full servers, not container deployments. The tested Server
+The installers target full servers, not container deployments. A tested Server
 Core image reports a workstation product type and is rejected by the installer's
-server-only platform check. Full installation acceptance requires a Server 2019 VM
-or host; the native-loading checks above do not bypass that requirement.
+server-only platform check. Use a Server 2019 VM or host for installation.
 
 Container checks alone do not establish host-kernel or full-server acceptance.
 The native tests above cover the listed kernel builds, not every RHEL update or
-MQ installation. Stable v6.0.0 remains unavailable until the remaining target
-acceptance is complete.
+MQ installation. Distribution release numbering follows IBM's exporter source;
+it does not establish compatibility with an untested MQ runtime.
 
 ## Check your server
 

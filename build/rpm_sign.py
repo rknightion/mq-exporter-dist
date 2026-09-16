@@ -116,7 +116,8 @@ def sign(directory, output, source):
         fingerprints = [line.split(':')[9] for line in listing if line.startswith('fpr:')]
         if len(sec) != 1 or sec[0][14] != '#' or len(sub) != 1 or fingerprints != [primary, signing]:
             raise ValueError('CI requires only the exact signing subkey, with no certification secret')
-        manifest = {'candidate_only': True, 'source': source, 'signing_fingerprint': signing,
+        manifest = {'candidate_only': '-rc.' in records[0][1]['source']['distribution_version'],
+                    'source': source, 'signing_fingerprint': signing,
                     'primary_fingerprint': primary, 'signing_image': image,
                     'tool_inventory': run(['rpm', '-qa', '--qf', '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n']).decode().splitlines(),
                     'packages': []}

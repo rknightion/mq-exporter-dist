@@ -1,9 +1,9 @@
 # RPM installation
 
 Separate `mq-prometheus` and `mq-otel` RPM candidates wrap the tested Linux archive
-binaries. There is no signed RPM repository yet. Native RPM install, upgrade,
-removal and SELinux lifecycle acceptance are still required before release.
-Use the [archive installer](linux.md) for the current release candidates.
+binaries. Package and repository-metadata signatures use the dedicated project
+key. There is no public hosted yum repository yet. See the
+[compatibility limits](compatibility.md) before deploying an RPM.
 
 ## Versions and ownership
 
@@ -30,7 +30,7 @@ The existing IBM MQ 9.3.0.27 runtime, a dedicated `mqmon` account and appropriat
 MQ permissions remain prerequisites. RPM does not install IBM software, create
 MQ objects, grant access or alter the firewall. No compiler is required.
 
-For a future signed Prometheus RPM, configure before enabling the service:
+For the Prometheus exporter RPM, configure before enabling the service:
 
 ```bash
 umask 077

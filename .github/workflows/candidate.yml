@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Candidate version following the exporter source, for example v6.0.0-rc.1'
+        description: 'Distribution version, for example v6.0.0 or v6.0.0-rc.1'
         required: true
         type: string
       publish:
-        description: 'Publish a prerelease after successful tests (otherwise retain CI candidates only)'
+        description: 'Publish archives after successful tests (rc versions are prereleases; false also builds RPMs)'
         type: boolean
         default: false
 permissions:
@@ -104,6 +104,26 @@ jobs:
           merge-multiple: true
       - name: Validate RPM transactions in EL8 and EL9 userspaces
         run: just test-rpm .work/rpm-candidates
+  attest:
+    if: ${{ !inputs.publish }}
+    needs: [build, rpm-check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: candidate-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
   publish:
     if: inputs.publish
     needs: build
@@ -133,7 +153,7 @@ jobs:
           subject-path: |
             dist/*.tar.gz
             dist/*.zip
-      - name: Publish tested bytes as a prerelease
+      - name: Publish tested bytes
         env:
           GH_TOKEN: ${{ github.token }}
           DIST_VERSION: ${{ inputs.version }}

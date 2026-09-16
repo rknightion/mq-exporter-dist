@@ -112,10 +112,18 @@ release-index:
 ci-tool-versions:
     @printf 'go=%s\npython=%s\n' '{{ go_version }}' '{{ python_version }}'
 
-# Publish the verified candidate bytes without rebuilding.
+# Publish verified release bytes without rebuilding; rc versions remain prereleases.
 [group('release')]
 publish version sha: publish-check
-    gh release create {{ quote(version) }} dist/* --target {{ quote(sha) }} --prerelease --title {{ quote(version + ' (provisional platform support)') }} --notes-file docs/candidate-notes.md
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version={{ quote(version) }}
+    sha={{ quote(sha) }}
+    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
+    [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+    flags=()
+    if [[ "$version" == *-rc.* ]]; then flags+=(--prerelease); fi
+    gh release create "$version" dist/* --target "$sha" "${flags[@]}" --title "$version" --notes-file docs/candidate-notes.md
 
 # Check SDK integrity records against the pinned build inputs.
 [group('release')]

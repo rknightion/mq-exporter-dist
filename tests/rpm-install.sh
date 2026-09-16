@@ -15,7 +15,9 @@ rpm -Uvh --replacepkgs /packages/*.rpm
 grep -Fx 'synthetic preserved config' /etc/mq-prometheus/qm1.json
 grep -Fx 'synthetic preserved config' /etc/mq-otel/qm1.json
 if grep -E 'stop|restart|enable|preset' /tmp/rpm-systemctl-calls; then exit 1; fi
+reloads=$(grep -c '^daemon-reload$' /tmp/rpm-systemctl-calls)
 rpm -e mq-prometheus
+(( $(grep -c '^daemon-reload$' /tmp/rpm-systemctl-calls) > reloads ))
 test -f /etc/mq-prometheus/qm1.json
 test -x /usr/libexec/mq-otel/mq_otel
 grep -Fx 'stop mq-prometheus@*.service' /tmp/rpm-systemctl-calls

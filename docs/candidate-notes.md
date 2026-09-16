@@ -1,4 +1,4 @@
-Community distribution candidate of IBM's unchanged mq_prometheus and mq_otel
+Community distribution of IBM's unchanged mq_prometheus and mq_otel
 v6.0.0, delivered as separate packages. Install only the exporter you need.
 This is not an official IBM release or an IBM-supported product. It is not
 affiliated with IBM or Grafana Labs and is provided without warranty.
@@ -6,8 +6,8 @@ affiliated with IBM or Grafana Labs and is provided without warranty.
 Prometheus archives use the `mq-exporter-dist-` prefix; OpenTelemetry archives use
 `mq-otel-dist-`. Each has a Linux tar.gz and Windows ZIP, with its own configuration
 reader. OTel requires an explicitly configured OTLP receiver and does not expose
-the Prometheus health endpoint. The earlier published v0.1.0-rc.1 contains
-Prometheus only; these notes describe the next candidate's scope.
+the Prometheus health endpoint. Neither package installs or changes a Prometheus
+server or Grafana Alloy. Their configuration is supplied only as examples.
 
 Initial targets: Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x / glibc 2.34,
 with an existing IBM MQ 9.3.0.27 runtime; Windows Server 2019 amd64, with its MQ
@@ -15,18 +15,15 @@ runtime version independently confirmed. Platform support remains provisional.
 
 Archives contain precompiled executables, installers, notices, SBOM and build
 metadata. IBM MQ SDK/runtime libraries are not included. SHA256SUMS and GitHub
-provenance cover these exact candidate bytes. Review the compatibility matrix and
+provenance cover these archive bytes. Review the compatibility matrix and
 per-artifact metadata before use. Native RHEL and Server 2019 lifecycle checks
-and live MQ 9.3.0.35 trial checks are described in [compatibility](compatibility.md).
+and live MQ 9.3.0.35 trial checks are described in the
+[compatibility guide](https://rknightion.github.io/mq-exporter-dist/compatibility/).
 Exact MQ 9.3.0.27 server/local-bindings acceptance remains outstanding.
 Build metadata records build-time checks, not
 subsequent native validation.
 
-The rc.4 Windows installer fixes ACL inspection on Server 2019 by reading SIDs
-directly, without weakening write-permission checks. Older installer copies can
-fail when Windows cannot translate application-package SIDs to account names.
-
-The rc.5 Linux installer accepts IBM's native `mqm` ownership
-for the MQ installation directory only. It retains root ownership for parent
-directories and the exporter installation, rejects group/world-writable paths,
-and keeps the MQ 9.3.0.27 version requirement.
+Separate signed RPMs install only the selected IBM exporter and its systemd
+template. They preserve administrator configuration, require explicit service
+startup and do not bundle IBM MQ libraries. A public hosted yum repository is
+not yet available.
