@@ -8,8 +8,9 @@ Use the [archive installer](linux.md) for the current release candidates.
 ## Versions and ownership
 
 RPM `Version` follows IBM's upstream tag. `Release` identifies this distribution:
-`6.0.0-0.1.0~rc.5.mqdist` packages upstream 6.0.0 from distribution v0.1.0-rc.5.
-The stable form is `6.0.0-0.1.0.mqdist`; RPM sorts the candidate below it.
+`6.0.0-6.0.0~rc.1.mqdist` packages upstream 6.0.0 from distribution v6.0.0-rc.1.
+The stable form is `6.0.0-6.0.0.mqdist`; RPM sorts the candidate below it.
+Release numbering follows the exporter source, not the IBM MQ runtime version.
 These are community packages, not IBM RPMs.
 
 Each product owns its binaries under `/usr/libexec/mq-prometheus` or

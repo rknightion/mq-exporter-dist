@@ -98,7 +98,7 @@ or host; the native-loading checks above do not bypass that requirement.
 
 Container checks alone do not establish host-kernel or full-server acceptance.
 The native tests above cover the listed kernel builds, not every RHEL update or
-MQ installation. Stable v0.1.0 remains unavailable until the remaining target
+MQ installation. Stable v6.0.0 remains unavailable until the remaining target
 acceptance is complete.
 
 ## Check your server

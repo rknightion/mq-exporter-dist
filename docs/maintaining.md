@@ -12,11 +12,11 @@ You must have rights to use those separately licensed inputs.
 
 ```bash
 just check
-just build-linux v0.1.0-rc.3
-just build-linux v0.1.0-rc.3 otel
+just build-linux v6.0.0-rc.1
+just build-linux v6.0.0-rc.1 otel
 # On a Windows build host:
-just build-windows v0.1.0-rc.3
-just build-windows v0.1.0-rc.3 otel
+just build-windows v6.0.0-rc.1
+just build-windows v6.0.0-rc.1 otel
 just release-index
 just public-check
 ```
@@ -24,6 +24,12 @@ just public-check
 Each exporter has separate Linux and Windows archives. The default exporter is
 Prometheus. Build inputs and workspaces remain in ignored local storage and are
 never part of the public payload.
+
+Public release versions follow the pinned IBM exporter source, not the MQ runtime:
+exporter v6.0.0 uses distribution v6.0.0, with `-rc.N` for candidates. Distribution
+and upstream identities remain separate fields in build metadata. Earlier v0.1.0
+candidates predate this naming convention. The MQ SDK/runtime version is an
+independent compatibility requirement and does not determine the release version.
 
 ## Upgrade a dependency
 
@@ -74,7 +80,7 @@ Unpublished Candidate release runs also retain these as explicitly named
 
 RPM Version is the pinned upstream tag without `v`; Release is the distribution
 version without `v`, replacing `-rc.` with `~rc.`, followed by `.mqdist`. For example,
-`6.0.0-0.1.0~rc.5.mqdist` sorts before `6.0.0-0.1.0.mqdist`. Existing archive and
+`6.0.0-6.0.0~rc.1.mqdist` sorts before `6.0.0-6.0.0.mqdist`. Existing archive and
 GitHub distribution tags remain distinct from upstream. Never reuse an RPM NEVRA
 for changed bytes. Bump the distribution revision when packaging changes.
 

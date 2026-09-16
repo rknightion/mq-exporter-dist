@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Candidate version, for example v0.1.0-rc.1'
+        description: 'Candidate version following the exporter source, for example v6.0.0-rc.1'
         required: true
         type: string
       publish:

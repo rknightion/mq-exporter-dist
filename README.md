@@ -24,7 +24,7 @@ versions are separate from IBM's exporter version.
 
 ## Install a candidate
 
-**Platform support is provisional.** Stable v0.1.0 is not available.
+**Platform support is provisional.** Stable v6.0.0 is not available.
 [GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases) currently
 provides Prometheus v0.1.0-rc.1. OpenTelemetry packages are not yet published.
 
