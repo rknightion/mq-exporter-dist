@@ -2,6 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "packageRules": [{
+    "matchDatasources": ["docker"],
+    "matchPackageNames": ["almalinux"],
+    "allowedVersions": "<10"
+  }, {
     "matchDatasources": ["rpm"],
     "matchPackageNames": ["rpm-build"],
     "registryUrls": ["https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/"],
