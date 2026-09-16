@@ -5,8 +5,8 @@
    LICENSE/NOTICE files. Build a fresh pinned checkout, never an existing working
    tree. Record any essential patch separately; the initial build has no patch.
 2. Select a supported patched Go release from [Go downloads](https://go.dev/dl/)
-   and verify hashes from its JSON manifest. The initial pin is Go 1.26.8, one of
-   the two supported release families when selected. Check [minimum requirements](https://go.dev/wiki/MinimumRequirements)
+   and verify hashes from its JSON manifest. The current pin is Go 1.27.1.
+   Check [minimum requirements](https://go.dev/wiki/MinimumRequirements)
    again, especially Windows cgo's DWARF 5 / binutils >=2.37 requirement.
 3. Obtain MQ SDK/client inputs from [IBM's published acquisition route](https://www.ibm.com/docs/en/ibm-mq/9.3.x?topic=overview-redistributable-mq-clients).
    Keep these separately licensed inputs outside source and public payloads. The

@@ -1,5 +1,10 @@
 # mq-exporter-dist
 
+> [!WARNING]
+> Community-contributed software, provided **AS IS, without warranty of any kind**.
+> This project is not affiliated with, endorsed by, sponsored by or supported by
+> IBM or Grafana Labs. Those companies have no responsibility for this distribution.
+
 Community packaging and installation for [IBM's MQ Prometheus exporter](https://github.com/ibm-messaging/mq-metric-samples/tree/v6.0.0/cmd/mq_prometheus).
 This is not an IBM-supported product or an official IBM release. The collector is
 IBM's unchanged source. Distribution versions are independent of upstream versions.
