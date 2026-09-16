@@ -4,7 +4,14 @@ $ErrorActionPreference = 'Stop'
 $installer = 'C:\prerequisites\vc_redist.x64.exe'
 if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne 'cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b') { throw 'VC runtime hash mismatch' }
 $log = 'C:\prerequisites\vc-install.log'
-$process = Start-Process -FilePath $installer -ArgumentList @('/install','/quiet','/norestart','/log',$log) -PassThru
+Write-Output 'Starting verified VC runtime installer without ShellExecute'
+$start = New-Object System.Diagnostics.ProcessStartInfo
+$start.FileName = $installer
+$start.Arguments = '/install /quiet /norestart /log ' + $log
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$process = [System.Diagnostics.Process]::Start($start)
+Write-Output ('VC runtime process started: ' + $process.Id)
 # Cache the process handle before waiting: Windows PowerShell otherwise can
 # return a null ExitCode. Wait only for the bootstrapper, not long-lived MSI children.
 $null = $process.Handle
