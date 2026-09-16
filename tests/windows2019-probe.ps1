@@ -48,9 +48,12 @@ Copy-Item -LiteralPath $vcRedist -Destination $context
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019/Dockerfile') -Destination $context
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019/install-runtime.ps1') -Destination $context
 $testImage = 'mq-server2019-test:' + [Guid]::NewGuid().ToString('N')
+$installUser = 'ContainerAdministrator'
+if ($env:MQ_PROBE_IDENTITY -eq 'system') { $installUser = 'NT AUTHORITY\SYSTEM' }
+elseif ($env:MQ_PROBE_IDENTITY -and $env:MQ_PROBE_IDENTITY -ne 'administrator') { throw 'Unknown probe identity' }
 # Build networking permits Windows prerequisite setup; the smoke test stays offline.
-& docker build --isolation=hyperv --tag $testImage $context
+& docker build --isolation=hyperv --memory 4GB --build-arg ('INSTALL_USER=' + $installUser) --tag $testImage $context
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 prerequisite image build failed' }
 & docker image inspect $testImage --format '{{.Id}}'
-& docker run --rm --network none --isolation=hyperv --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-smoke.ps1
+& docker run --rm --network none --isolation=hyperv --memory 4GB --mount ('type=bind,source=' + $work + ',target=C:\input,readonly') $testImage powershell.exe -NoLogo -NoProfile -NonInteractive -File C:\input\windows2019-smoke.ps1
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 exporter smoke tests failed' }

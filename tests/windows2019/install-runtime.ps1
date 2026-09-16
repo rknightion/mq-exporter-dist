@@ -1,6 +1,11 @@
 #requires -Version 5.1
 # Runs only inside the disposable test image. No MQ runtime is baked into it.
 $ErrorActionPreference = 'Stop'
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+Write-Output ('Install identity SID: ' + $identity.User.Value)
+Write-Output ('Administrator token: ' + $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+Get-CimInstance Win32_Service -Filter "Name='Appinfo' OR Name='msiserver'" | Select-Object Name,State,StartMode | Format-Table
 $installer = 'C:\prerequisites\vc_redist.x64.exe'
 if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne 'cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b') { throw 'VC runtime hash mismatch' }
 $log = 'C:\prerequisites\vc-install.log'
