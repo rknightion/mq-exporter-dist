@@ -35,6 +35,13 @@ validation coverage. “Not tested” is not a pass.
 | Live MQ connection and queue metrics | Not tested | Not tested | Not tested |
 | Reconnection and restart with MQ | Not tested | Not tested | Not tested |
 
+The published Prometheus `v0.1.0-rc.1` Windows package also passed PE inspection,
+native loading, the actual upstream configuration reader and the expected exit
+code 10 when MQ is unavailable in a Hyper-V-isolated Server Core 2019 container
+(build 17763, PowerShell 5.1). This used the MQ 9.3.0.27 client and Microsoft x64
+VC runtime 14.44.35211.0. This check does not cover the OTel package or a full
+exporter installation and service lifecycle on Server 2019.
+
 EL8/EL9 containers do not establish operation on a RHEL host's kernel. Native
 RHEL 8.10 kernel 4.18 validation remains outstanding. A Server Core 2019 container
 also does not establish full-server installation, service-account permissions or
