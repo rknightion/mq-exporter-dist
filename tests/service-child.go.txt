@@ -1,0 +1,8 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() { fmt.Println("synthetic child started"); time.Sleep(3 * time.Second) }

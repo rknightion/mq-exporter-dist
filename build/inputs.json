@@ -1,0 +1,22 @@
+{
+  "upstream_tag": "v6.0.0",
+  "upstream_commit": "7bce9b8ef9ef513ff77688f022929843d5ba7eaf",
+  "go_version": "1.26.8",
+  "go_linux_sha256": "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b",
+  "go_windows_sha256": "b92c3b2adae85a11ba71fe7216daf0d84e82af4c8ab6c5625807f28622043a59",
+  "mq_sdk_version": "9.3.0.27",
+  "mq_linux_sha256": "3642ea4adf06e5aeb8744fd947b524fe071ef62305efc312b911092866c8655f",
+  "mq_windows_sha256": "e1e7dcf2ae1b566b816953864ec140d2ff87ad2da32bbbd73ae58dadfdfed419",
+  "mq_digest_source": "Locally calculated from IBM HTTPS downloads; independent publisher signature validation remains pending",
+  "linux_image": "registry.access.redhat.com/ubi8/ubi@sha256:91e8320e4a77e25b086b70d534cd15dd3b404d23fb1a7e6fd5dc0d8274fc9926",
+  "windows_toolchain_url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r1.zip",
+  "windows_toolchain_sha256": "c1f52294597c0b73786b2a78eb5d176d89226d2f21875eab75e783a8b1cefcc4",
+  "windows_toolchain_digest_source": "Release .zip.sha256 asset",
+  "service_xsys_version": "v0.45.0",
+  "service_xsys_commit": "397d5f80920585bc27433d878aba498d062f81e1",
+  "service_xsys_zip_sha256": "e51c1c88045b4edbe48ad810122131381ff541c89edbd97ef833ed6653b59e6a",
+  "service_xsys_module_sum": "h1:dO4czNzziLiiXplLQgBCEpCvXQ3dnkn0SdaZSYdQ+FY=",
+  "linux_gcc": "8.5.0-28.el8_10",
+  "linux_binutils": "2.30-128.el8_10",
+  "linux_glibc_devel": "2.28-251.el8_10.40"
+}

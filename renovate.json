@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "customManagers": [{
+    "customType": "regex",
+    "managerFilePatterns": ["/^justfile$/"],
+    "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+ := \"(?<currentValue>[^\"]+)\""]
+  }]
+}

@@ -1,0 +1,26 @@
+{
+  "connection": {
+    "clientConnection": false,
+    "queueManager": "QM1",
+    "replyQueue": "SYSTEM.DEFAULT.MODEL.QUEUE"
+  },
+  "filters": {"queueSubscriptionSelector": ["PUT", "GET", "GENERAL"]},
+  "global": {
+    "logLevel": "INFO",
+    "pollInterval": "30s",
+    "rediscoverInterval": "1h",
+    "useObjectStatus": true,
+    "usePublications": true,
+    "useResetQStats": false,
+    "useStatistics": false
+  },
+  "objects": {"channels": ["*"], "queues": ["APP.*", "!SYSTEM.*", "!AMQ.*"]},
+  "prometheus": {
+    "host": "127.0.0.1",
+    "keepRunning": true,
+    "metricsPath": "/metrics",
+    "namespace": "ibmmq",
+    "port": "9157",
+    "reconnectInterval": "5s"
+  }
+}

@@ -1,0 +1,8 @@
+prometheus.scrape "ibm_mq_qm1" {
+  targets = [{ __address__ = "127.0.0.1:9157", instance = "QM1" }]
+  job_name = "integrations/ibm-mq"
+  scrape_interval = "60s"
+  forward_to = [prometheus.remote_write.metrics.receiver]
+}
+// Supply your existing authenticated remote_write component named "metrics".
+// Do not copy credentials into this example or change an existing monitoring agent.

@@ -1,0 +1,16 @@
+package main
+
+// Compiled beside an exact copy of upstream cmd/mq_prometheus/config.go.
+// initConfig is the actual upstream reader and validator; no connection is made.
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	if err := initConfig(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Println("Upstream configuration reader: PASS (no MQ connection attempted)")
+}

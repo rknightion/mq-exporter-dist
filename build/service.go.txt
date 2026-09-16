@@ -1,0 +1,82 @@
+package main
+
+// Windows SCM adapter only. Collection remains in IBM's unchanged executable.
+import (
+	"flag"
+	"golang.org/x/sys/windows/svc"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+)
+
+type handler struct{ binary, config, mq, logs string }
+
+func (h *handler) Execute(_ []string, requests <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
+	changes <- svc.Status{State: svc.StartPending}
+	log, e := os.OpenFile(filepath.Join(h.logs, "exporter.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if e != nil {
+		return false, 1
+	}
+	defer log.Close()
+	for {
+		cmd := exec.Command(h.binary, "-f", h.config)
+		cmd.Env = []string{"SystemRoot=" + os.Getenv("SystemRoot"), "TEMP=" + os.Getenv("TEMP"), "TMP=" + os.Getenv("TMP"), "PATH=" + filepath.Join(h.mq, "bin64") + ";" + filepath.Join(os.Getenv("SystemRoot"), "System32")}
+		cmd.Stdout = log
+		cmd.Stderr = log
+		if e := cmd.Start(); e != nil {
+			return false, 2
+		}
+		changes <- svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}
+		done := make(chan error, 1)
+		go func() { done <- cmd.Wait() }()
+		running := true
+		for running {
+			select {
+			case r := <-requests:
+				if r.Cmd == svc.Interrogate {
+					changes <- r.CurrentStatus
+				}
+				if r.Cmd == svc.Stop || r.Cmd == svc.Shutdown {
+					changes <- svc.Status{State: svc.StopPending}
+					_ = cmd.Process.Kill()
+					<-done
+					return false, 0
+				}
+			case <-done:
+				running = false
+			}
+		}
+		timer := time.NewTimer(15 * time.Second)
+		waiting := true
+		for waiting {
+			select {
+			case r := <-requests:
+				if r.Cmd == svc.Interrogate {
+					changes <- r.CurrentStatus
+				}
+				if r.Cmd == svc.Stop || r.Cmd == svc.Shutdown {
+					timer.Stop()
+					return false, 0
+				}
+			case <-timer.C:
+				waiting = false
+			}
+		}
+	}
+}
+func main() {
+	name := flag.String("name", "", "service name")
+	h := &handler{}
+	flag.StringVar(&h.binary, "binary", "", "exporter")
+	flag.StringVar(&h.config, "config", "", "config")
+	flag.StringVar(&h.mq, "mq", "", "MQ installation")
+	flag.StringVar(&h.logs, "logs", "", "logs")
+	flag.Parse()
+	if *name == "" || h.binary == "" || h.config == "" || h.mq == "" || h.logs == "" {
+		os.Exit(2)
+	}
+	if e := svc.Run(*name, h); e != nil {
+		os.Exit(1)
+	}
+}

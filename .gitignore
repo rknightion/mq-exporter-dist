@@ -27,6 +27,12 @@ go.work.sum
 # env file
 .env
 
+# Build inputs and outputs are local, never source or SDK redistribution.
+/.work/
+/dist/
+/docs/superpowers/
+__pycache__/
+
 # Editor/IDE
 # .idea/
 # .vscode/

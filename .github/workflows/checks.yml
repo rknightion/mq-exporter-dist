@@ -1,0 +1,39 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3
+        with:
+          just-version: '1.58.0'
+      - id: tools
+        run: just ci-tool-versions >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ steps.tools.outputs.go }}
+          cache: false
+      - run: just check
+      - run: just public-check
+  actionlint:
+    uses: rknightion/.github/.github/workflows/actionlint.yml@e5fb83e8b9fac5d9bcca87c9f189ec3ea946de84 # v1.21.1
+    permissions:
+      contents: read
+  zizmor:
+    uses: rknightion/.github/.github/workflows/zizmor.yml@e5fb83e8b9fac5d9bcca87c9f189ec3ea946de84 # v1.21.1
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
