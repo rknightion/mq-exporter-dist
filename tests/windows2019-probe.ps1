@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Docker engine unavailable; container test did 
 if ($LASTEXITCODE -ne 0) { throw 'Docker engine information unavailable' }
 & docker pull $image
 if ($LASTEXITCODE -ne 0) { throw 'Image pull failed; container test did not run' }
-$command = 'if ([Environment]::OSVersion.Version.Build -ne 17763) { exit 2 }; [Environment]::OSVersion.Version.ToString(); $PSVersionTable.PSVersion.ToString()'
+$command = 'if ([Environment]::OSVersion.Version.Build -ne 17763) { exit 2 }; [Environment]::OSVersion.Version.ToString(); $PSVersionTable.PSVersion.ToString(); $os = Get-CimInstance Win32_OperatingSystem; $os | Select-Object Caption,Version,BuildNumber,ProductType | Format-List; Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | Select-Object ProductName,InstallationType,CurrentBuildNumber | Format-List; if ($os.BuildNumber -ne "17763" -or $os.ProductType -eq 1) { exit 3 }'
 & docker run --rm --network none --isolation=hyperv $image powershell.exe -NoLogo -NoProfile -NonInteractive -Command $command
 if ($LASTEXITCODE -ne 0) { throw 'Server 2019 Hyper-V container could not complete the probe; no product tests ran' }
 Write-Output 'PASS: Server 2019 kernel and PowerShell started under Hyper-V isolation. Product tests are a separate step.'
