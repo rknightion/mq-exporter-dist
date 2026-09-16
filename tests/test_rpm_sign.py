@@ -12,6 +12,15 @@ import rpm_sign
 
 
 class SigningTests(unittest.TestCase):
+    def test_secret_file_is_private_and_never_overwrites_existing_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'secret'
+            rpm_sign.write_secret(path, 'synthetic')
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                rpm_sign.write_secret(path, 'replacement')
+            self.assertEqual(path.read_text(), 'synthetic')
+
     def test_run_identity_rejects_wrong_origin_or_unfinished_checks(self):
         run = {'repository': {'full_name': rpm_sign.REPOSITORY}, 'path': '.github/workflows/candidate.yml',
                'head_branch': 'main', 'head_sha': 'a' * 40, 'event': 'workflow_dispatch',

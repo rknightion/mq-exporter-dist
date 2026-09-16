@@ -19,6 +19,11 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def write_secret(path, value):
+    with open(path, 'x', encoding='utf-8', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
+        stream.write(value)
+
+
 def validate_run(run, commit):
     if (run.get('repository', {}).get('full_name') != REPOSITORY
             or run.get('path') != '.github/workflows/candidate.yml'
@@ -90,8 +95,7 @@ def sign(directory, output, source):
         secret = Path(tmp)
         (secret / 'gnupg').mkdir(mode=0o700)
         for name, variable in [('key.asc', 'RPM_SIGNING_KEY'), ('passphrase', 'RPM_SIGNING_PASSPHRASE')]:
-            with (secret / name).open('x', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
-                stream.write(os.environ.pop(variable))
+            write_secret(secret / name, os.environ.pop(variable))
         command = ['docker', 'run', '--rm', '--platform', 'linux/amd64', '--network=none',
                    '--user', f'{os.getuid()}:{os.getgid()}',
                    '-v', str(secret) + ':/secrets', '-v', str(output.resolve()) + ':/packages', image]
