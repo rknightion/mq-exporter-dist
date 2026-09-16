@@ -29,9 +29,10 @@ for package in /packages/*.rpm; do
     grep -E 'RSA/SHA256 Signature.*: OK$' "$scratch/check"
     cat "$scratch/check"
     cp "$package" "$scratch/corrupt.rpm"
-    original=$(od -An -tu1 -j4096 -N1 "$package")
+    offset=$(( $(stat -c '%s' "$package") - 1 ))
+    original=$(od -An -tu1 -j"$offset" -N1 "$package")
     printf -v changed '\\%03o' "$((original ^ 1))"
-    printf '%b' "$changed" | dd of="$scratch/corrupt.rpm" bs=1 seek=4096 conv=notrunc status=none
+    printf '%b' "$changed" | dd of="$scratch/corrupt.rpm" bs=1 seek="$offset" conv=notrunc status=none
     if rpmkeys --dbpath "$scratch/rpmdb" --checksig "$scratch/corrupt.rpm"; then
         echo 'ERROR: corrupt package passed verification' >&2
         exit 1
