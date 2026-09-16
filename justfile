@@ -89,6 +89,16 @@ publish-check:
 windows2019-probe:
     powershell.exe -NoLogo -NoProfile -NonInteractive -File tests/windows2019-probe.ps1
 
+# Exercise real systemd only on a prepared, authorized disposable native VM.
+[group('check')]
+native-linux-install-cycle:
+    bash tests/linux-native-install.sh
+
+# Exercise real SCM only on a prepared, authorized disposable Server 2019 VM.
+[group('check')]
+native-windows-install-cycle:
+    powershell.exe -NoLogo -NoProfile -NonInteractive -File tests/windows2019-install.ps1
+
 # Refresh the documentation dependency lock (requires uv on the build machine).
 [group('gen')]
 docs-lock:

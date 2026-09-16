@@ -1,28 +1,19 @@
 #requires -Version 5.1
+param([string]$InstallerOverride, [switch]$KeepServices)
 # Destructive fixtures only inside a fresh disposable, network-isolated guest.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:MQ_DIST_DISPOSABLE_TEST -ne '1' -or [Environment]::OSVersion.Version.Build -ne 17763 -or -not (Test-Path C:\input\candidate.zip)) { throw 'Disposable Server 2019 fixture required' }
 $utf8 = New-Object Text.UTF8Encoding($false)
-$root = 'C:\Program Files\MQ Test ' + [char]0x03B1
+$suffix = [Guid]::NewGuid().ToString('N').Substring(0,8)
+$root = 'C:\Program Files\MQ Test ' + [char]0x03B1 + '-' + $suffix
 $null = New-Item -ItemType Directory -Path $root
-$account = $env:COMPUTERNAME + '\mqtest'
+$account = $env:COMPUTERNAME + '\mqtest' + $suffix
 $secret = ConvertTo-SecureString ([Guid]::NewGuid().ToString('N') + '!aA7') -AsPlainText -Force
-$user = New-LocalUser -Name mqtest -Password $secret -AccountNeverExpires
+$user = New-LocalUser -Name ('mqtest' + $suffix) -Password $secret -AccountNeverExpires
 $credential = New-Object Management.Automation.PSCredential($account,$secret)
-# Preserve all current assignments; add only this fixture's service logon right.
-$policy = Join-Path $root 'rights.inf'
-& secedit.exe /export /cfg $policy /areas USER_RIGHTS /quiet
-if ($LASTEXITCODE -ne 0) { throw 'Service rights export failed' }
-$text = [IO.File]::ReadAllText($policy)
-if (-not $text.Contains('[Privilege Rights]')) { throw 'Exported policy has no privilege section' }
-$right = 'SeServiceLogonRight'
-$match = [regex]::Match($text, '(?m)^SeServiceLogonRight\s*=([^\r\n]*)')
-if ($match.Success) { $text = $text.Replace($match.Value, ($right + ' = ' + $match.Groups[1].Value.Trim() + ',*' + $user.SID.Value)) }
-else { $text = $text.Replace('[Privilege Rights]', ('[Privilege Rights]' + "`r`n" + $right + ' = *' + $user.SID.Value)) }
-[IO.File]::WriteAllText($policy,$text,[Text.Encoding]::Unicode)
-& secedit.exe /configure /db (Join-Path $root 'rights.sdb') /cfg $policy /areas USER_RIGHTS /quiet
-if ($LASTEXITCODE -ne 0) { throw 'Service rights assignment failed' }
+. (Join-Path $PSScriptRoot 'windows-service-account.ps1')
+Grant-TestServiceLogon $user.SID
 function Assert-True($Value,[string]$Message) { if (-not $Value) { throw $Message } }
 function Assert-Rejected([scriptblock]$Action,[string]$Pattern) {
     $message = ''
@@ -31,8 +22,8 @@ function Assert-Rejected([scriptblock]$Action,[string]$Pattern) {
 }
 function Assert-Private([string]$Path) {
     $acl = Get-Acl -LiteralPath $Path
-    foreach ($ace in $acl.Access) {
-        $sid = $ace.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+    foreach ($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        $sid = $ace.IdentityReference.Value
         Assert-True ($ace.AccessControlType -ne 'Allow' -or $sid -in @($user.SID.Value,'S-1-5-18','S-1-5-32-544')) 'Unexpected configuration ACL identity'
         if ($sid -eq $user.SID.Value) {
             $writes = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::ChangePermissions
@@ -67,12 +58,17 @@ function Stop-Instance([string]$Instance) {
 $sum = Join-Path $root 'SHA256SUMS'
 [IO.File]::WriteAllText($sum, "806c56e27f8b95914fab19006c53329f56801b2abc31df1dcba6dd845ec974b3  mq-exporter-dist-v0.1.0-rc.1-windows-amd64.zip`n",$utf8)
 $common = @{Instance='qm1';QueueManager='QM1';ServiceAccount=$account;ServiceCredential=$credential;MQPath='C:\input\mq';InstallRoot=$root;NoStart=$true}
-& C:\input\payload\install.ps1 @common -Version v0.1.0-rc.1 -Archive C:\input\candidate.zip -Checksums $sum
+$firstInstaller = 'C:\input\payload\install.ps1'
+if ($InstallerOverride) { $firstInstaller = $InstallerOverride; Write-Output 'TEST SCOPE: corrected standalone installer with unchanged candidate binaries; not an acceptance of the archived installer.' }
+& $firstInstaller @common -Version v0.1.0-rc.1 -Archive C:\input\candidate.zip -Checksums $sum
 $dest = Join-Path $root 'qm1'
 $config = Join-Path $dest 'config.json'
 Assert-Private $config
 $service = Get-CimInstance Win32_Service -Filter "Name='mq-exporter-qm1'"
-Assert-True ($service.StartName -eq $account -and $service.StartMode -eq 'Auto' -and $service.State -eq 'Stopped') 'Service identity/startup mismatch'
+$serviceName = $service.StartName
+if ($serviceName.StartsWith('.\')) { $serviceName = $env:COMPUTERNAME + $serviceName.Substring(1) }
+$serviceSid = (New-Object Security.Principal.NTAccount($serviceName)).Translate([Security.Principal.SecurityIdentifier]).Value
+Assert-True ($serviceSid -eq $user.SID.Value -and $service.StartMode -eq 'Auto' -and $service.State -eq 'Stopped') 'Service identity/startup mismatch'
 Start-Service mq-exporter-qm1
 Assert-Retry qm1
 Stop-Instance qm1
@@ -89,6 +85,7 @@ $rc3 = 'C:\input\prometheus\mq-exporter-dist-v0.1.0-rc.3-windows-amd64.zip'
 $common.NoStart = $false
 $upgrade = @{Version='v0.1.0-rc.3';Archive=$rc3;Checksums=$sum}
 $installer = 'C:\input\prometheus\payload\install.ps1'
+if ($InstallerOverride) { $installer = $InstallerOverride }
 & $installer @common @upgrade
 Assert-True ((Get-FileHash $config).Hash -eq $configHash) 'Upgrade overwrote user configuration'
 Assert-True ((Get-FileHash (Join-Path $dest 'mq_prometheus.exe')).Hash -eq (Get-FileHash C:\input\prometheus\payload\mq_prometheus.exe).Hash) 'Installed binary differs from candidate'
@@ -111,11 +108,14 @@ Write-Output 'PASS: rejection preserves running instance; independent client ins
 $otel = $common.Clone(); $otel.Instance='otel'; $otel.Exporter='otel'; $otel.OTLPEndpoint='http://127.0.0.1:4318'; $otel.OTLPInsecure=$true
 $otelArchive = 'C:\input\otel\mq-otel-dist-v0.1.0-rc.3-windows-amd64.zip'
 [IO.File]::WriteAllText($sum,"30d6c55f8d2e6b6510c0fd1774caf19c046a16306a031306f79a3a9b752449da  mq-otel-dist-v0.1.0-rc.3-windows-amd64.zip`n",$utf8)
-& C:\input\otel\payload\install.ps1 @otel -Version v0.1.0-rc.3 -Archive $otelArchive -Checksums $sum
+$otelInstaller = 'C:\input\otel\payload\install.ps1'
+if ($InstallerOverride) { $otelInstaller = $InstallerOverride }
+& $otelInstaller @otel -Version v0.1.0-rc.3 -Archive $otelArchive -Checksums $sum
 Assert-Private (Join-Path $root 'otel\config.json')
 Assert-Retry otel
 Write-Output 'PASS: separate OTel offline installation and actual upstream reader'
 # Removal deliberately keeps binaries, logs and configuration for recovery.
+if ($KeepServices) { Write-Output 'PASS: installation cycle through service start/retry; services retained for reboot validation. Removal not run.'; return }
 foreach ($instance in @('qm1','qm2','otel')) {
     Stop-Instance $instance
     & sc.exe delete ('mq-exporter-' + $instance)

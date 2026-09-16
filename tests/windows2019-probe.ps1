@@ -43,6 +43,7 @@ Expand-Archive -LiteralPath $release -DestinationPath (Join-Path $work 'payload'
 Expand-Archive -LiteralPath $sdk -DestinationPath (Join-Path $work 'mq')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-smoke.ps1') -Destination $work
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows2019-install.ps1') -Destination $work
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows-service-account.ps1') -Destination $work
 # Retrieve previously built candidates, never rebuild different bytes for acceptance.
 if ($env:MQ_PROBE_INSTALL_CYCLE -eq '1') {
     foreach ($product in @('prometheus','otel')) {

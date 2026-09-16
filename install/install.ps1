@@ -59,9 +59,10 @@ function Assert-TrustedParent([string]$Path) {
     while (-not (Test-Path -LiteralPath $parent)) { $parent = [IO.Path]::GetDirectoryName($parent) }
     $acl = Get-Acl -LiteralPath $parent
     $admin = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-    foreach ($ace in $acl.Access) {
-        $identity = $ace.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
-        $writeMask = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+    # Request SIDs directly: Server 2019 may not resolve application-package names.
+    foreach ($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        $identity = $ace.IdentityReference.Value
+        $writeMask = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership -bor 0x50000000 # GENERIC_WRITE | GENERIC_ALL
         if ($ace.AccessControlType -eq 'Allow' -and ($ace.FileSystemRights -band $writeMask) -and $identity -notin @($admin,'S-1-5-18','S-1-5-32-544','S-1-3-0','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')) { throw 'Installation parent is writable by an untrusted identity' }
     }
 }
@@ -69,8 +70,8 @@ function Assert-PrivateFile([string]$Path, [string]$Sid) {
     Assert-SafePath $Path
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw 'Password file missing' }
     $acl = Get-Acl -LiteralPath $Path
-    foreach ($ace in $acl.Access) {
-        $identity = $ace.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+    foreach ($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        $identity = $ace.IdentityReference.Value
         if ($ace.AccessControlType -eq 'Allow' -and $identity -notin @($Sid,'S-1-5-18','S-1-5-32-544')) { throw 'Password file must be restricted to the service account, SYSTEM and Administrators' }
     }
 }
