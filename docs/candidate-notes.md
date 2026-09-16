@@ -16,5 +16,11 @@ runtime version independently confirmed. Platform support remains provisional.
 Archives contain precompiled executables, installers, notices, SBOM and build
 metadata. IBM MQ SDK/runtime libraries are not included. SHA256SUMS and GitHub
 provenance cover these exact candidate bytes. Review the compatibility matrix and
-per-artifact metadata before use: build-host loading is not live MQ, local-bindings,
-RHEL kernel or Windows Server 2019 acceptance.
+per-artifact metadata before use. Native RHEL and Server 2019 lifecycle checks
+are described in [compatibility](compatibility.md); live MQ and local-bindings
+acceptance remain outstanding. Build metadata records build-time checks, not
+subsequent native validation.
+
+The rc.4 Windows installer fixes ACL inspection on Server 2019 by reading SIDs
+directly, without weakening write-permission checks. Older installer copies can
+fail when Windows cannot translate application-package SIDs to account names.

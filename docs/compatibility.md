@@ -26,14 +26,35 @@ The exporter installer does not install that runtime.
 The separate Prometheus and OpenTelemetry candidate packages have the following
 validation coverage. “Not tested” is not a pass.
 
-| Check | Linux EL8 / EL9 userspaces | Windows Server 2022 build host | Full RHEL / Server 2019 targets |
+| Check | Linux build and container checks | Native RHEL 8.10 / 9.6 | Native Windows Server 2019 |
 |---|---|---|---|
-| Compilation | Passed in EL8 | Passed | Built binaries require target validation |
-| Native loading and help | Passed in both userspaces | Passed | Not tested successfully |
-| Upstream configuration reader | Passed for both exporters | Passed, including Unicode paths | Not tested |
-| Service lifecycle | Installer tested with simulated systemd commands | Adapter tested with a synthetic child process | Not tested |
+| Compilation | Passed in EL8 | Precompiled binaries tested | Built on Server 2022 |
+| Native loading and help | Passed in EL8 and EL9 | Passed | Passed |
+| Upstream configuration reader | Passed for both exporters | Passed | Passed, including Unicode paths |
+| Install, upgrade and service lifecycle | Simulated systemd tests | Passed with real systemd | Passed with real SCM and dedicated account |
+| Reboot startup and unavailable-MQ retries | Not covered by containers | Passed | Passed |
 | Live MQ connection and queue metrics | Not tested | Not tested | Not tested |
-| Reconnection and restart with MQ | Not tested | Not tested | Not tested |
+| Recovery after losing an established MQ connection | Not tested | Not tested | Not tested |
+
+Native tests used RHEL 8.10 with kernel `4.18.0-553.158.1.el8_10.x86_64`
+and glibc 2.28, RHEL 9.6 with kernel `5.14.0-570.132.1.el9_6.x86_64`
+and glibc 2.34, and Windows Server 2019 build 17763 with PowerShell 5.1.
+SELinux remained enforcing on both RHEL hosts. All three used the MQ 9.3.0.27
+client runtime; Windows also used Microsoft VC runtime 14.44.35211.0.
+
+The Linux lifecycle checks covered Prometheus rc.1-to-rc.3 upgrades and separate
+OTel rc.3 installation. Windows checks passed with the packaged rc.4 installers,
+including rc.1-to-rc.4 upgrades and separate rc.4 instances. Reboot checks used
+the same corrected installer with rc.3 binaries; all four rc.4 exporter binaries
+are byte-identical to rc.3. The older Windows installer failed an ACL identity lookup
+on a full server; use the corrected installer, not the rc.1 or rc.3 copy.
+
+Coverage includes preserved configuration and executable backups, rejected
+checksum and identity changes, independent instances, stop/start, automatic
+startup after reboot, and service removal without deleting configuration.
+These tests do not establish successful local bindings or remote MQ connections:
+no queue manager was present. TLS, queue metrics and OTLP delivery still require
+a licensed lab with a live queue manager.
 
 The published Prometheus `v0.1.0-rc.1` Windows package also passed PE inspection,
 native loading, the actual upstream configuration reader and the expected exit
@@ -47,10 +68,9 @@ Core image reports a workstation product type and is rejected by the installer's
 server-only platform check. Full installation acceptance requires a Server 2019 VM
 or host; the native-loading checks above do not bypass that requirement.
 
-EL8/EL9 containers do not establish operation on a RHEL host's kernel. Native
-RHEL 8.10 kernel 4.18 validation remains outstanding. A Server Core 2019 container
-also does not establish full-server installation, service-account permissions or
-live MQ operation. Stable v0.1.0 remains unavailable until target acceptance.
+Container checks alone do not establish host-kernel or full-server acceptance.
+The native tests above cover the listed kernel builds, not every RHEL update or
+MQ installation. Stable v0.1.0 remains unavailable until live MQ acceptance.
 
 ## Check your server
 
