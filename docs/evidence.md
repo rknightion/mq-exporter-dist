@@ -87,7 +87,7 @@ Verified locally during implementation:
   state, independent SDK verification, workspace retention, SBOM roots and Linux
   private-path scanning. Startup state, SBOM and scanning were fixed; successful
   workspaces are archived rather than deleted under the retention policy. Release
-  publication now fails closed until reviewed independent IBM receipts exist.
+  publication checks reviewed SDK integrity records against the build pins.
 
 The initial native inspection found only GLIBC_2.2.5 and GLIBC_2.3.2 requirements.
 Its upstream RPATH was identified and the build was adjusted using
@@ -96,15 +96,13 @@ verify RUNPATH on the exact candidate, architecture, interpreter and MQ imports.
 
 Outstanding: actual RHEL service lifecycle; native kernel 4.18; local bindings and
 live MQ metrics/reconnection; Server 2019 runtime and full installer lifecycle;
-independent SDK publisher integrity verification; whole-archive reproducibility
-and an independently repeated Windows build. No unavailable check is a pass.
+whole-archive reproducibility and an independently repeated Windows build.
+No unavailable check is a pass.
 
-Resume by obtaining authenticated IBM signature material and recording verified
-receipts, then run the Candidate release workflow at that reviewed commit. It
-produces candidate artifacts after platform checks. Publication additionally needs
-the IBM signature/checksum receipt gate. The 9.3.0.27 signature package was located
-in Fix Central, but its download redirected to authentication; browser access was
-unavailable. The public checksum page does not list this version.
+SDK integrity records now accept IBM HTTPS downloads with pinned SHA-256 checks;
+the Windows ZIP also passed strict JAR signature verification. The earlier SDK
+publication blocker is resolved. Resume with the Candidate release workflow at
+the reviewed commit; platform acceptance remains provisional.
 Private inputs, SDK libraries and uncommitted local test fixtures are not release
 assets. No real queue manager, server or existing monitoring configuration was
 modified during these checks.

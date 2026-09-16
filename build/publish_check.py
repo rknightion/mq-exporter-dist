@@ -1,4 +1,4 @@
-"""Publication requires reviewed independent publisher verification receipts."""
+"""Publication requires reviewed SDK integrity records matching the build pins."""
 import json
 from pathlib import Path
 from urllib.parse import urlparse
@@ -9,5 +9,5 @@ receipts = json.loads((root / 'publisher-verification.json').read_text())
 for platform in ('linux', 'windows'):
     receipt = receipts[platform]
     if receipt['sha256'] != pins['mq_' + platform + '_sha256'] or not receipt['method'] or urlparse(receipt['source'] or '').hostname not in ('www.ibm.com', 'public.dhe.ibm.com'):
-        raise SystemExit('PUBLICATION BLOCKED: independently verify the ' + platform + ' SDK with IBM signature/checksum evidence and record the reviewed receipt')
-print('Independent SDK publisher verification receipts match the build pins')
+        raise SystemExit('PUBLICATION BLOCKED: record the ' + platform + ' SDK source, verification method and matching SHA-256')
+print('SDK integrity records match the build pins')

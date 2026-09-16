@@ -1,4 +1,12 @@
 {
-  "linux": {"sha256": null, "source": null, "method": null},
-  "windows": {"sha256": null, "source": null, "method": null}
+  "linux": {
+    "sha256": "3642ea4adf06e5aeb8744fd947b524fe071ef62305efc312b911092866c8655f",
+    "source": "https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.3.0.27-IBM-MQC-Redist-LinuxX64.tar.gz",
+    "method": "IBM HTTPS download with pinned SHA-256 verification"
+  },
+  "windows": {
+    "sha256": "e1e7dcf2ae1b566b816953864ec140d2ff87ad2da32bbbd73ae58dadfdfed419",
+    "source": "https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.3.0.27-IBM-MQC-Redist-Win64.zip",
+    "method": "IBM HTTPS download with pinned SHA-256 verification; jarsigner -verify -strict passed using Temurin 21.0.12+8, IBM signer and trusted DigiCert chain"
+  }
 }

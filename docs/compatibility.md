@@ -50,6 +50,6 @@ generator with a Unicode password-file path and compare parsed output with Linux
 Check service-account read access and logs under the actual service identity.
 
 Promotion requires these records for both Linux targets and Server 2019, exact
-distribution commit and archive hashes, independent SDK integrity verification,
+distribution commit and archive hashes, pinned SDK integrity verification,
 license review, reproducibility comparison, and green checks at that commit.
 The candidate workflow deliberately refuses stable version strings.

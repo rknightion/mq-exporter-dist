@@ -10,10 +10,11 @@
    again, especially Windows cgo's DWARF 5 / binutils >=2.37 requirement.
 3. Obtain MQ SDK/client inputs from [IBM's published acquisition route](https://www.ibm.com/docs/en/ibm-mq/9.3.x?topic=overview-redistributable-mq-clients).
    Keep these separately licensed inputs outside source and public payloads. The
-   initial SDK hashes were calculated from IBM HTTPS downloads; independent
-   publisher-signature validation is still pending. Do not represent those hashes
-   as IBM-published checksums. Do not use a newer SDK as proof of older-runtime
-   compatibility. Inspect imported APIs and load against the intended older runtime.
+   SDK inputs use IBM HTTPS downloads with pinned SHA-256 verification. Record
+   their source, method and hash in `build/publisher-verification.json`; these
+   locally calculated hashes are not IBM-published checksums. Do not use a newer
+   SDK as proof of older-runtime compatibility. Inspect imported APIs and load
+   against the intended older runtime.
 4. Update `build/inputs.json`, the Linux Dockerfile and workflow toolchain versions
    together. Pin action/reusable SHAs after reading their inputs and permissions.
    Record compiler/linker versions, the final local build-image digest and full RPM
@@ -30,15 +31,7 @@
 
 Use **Candidate release** to build both platforms at the workflow's exact SHA.
 It builds once, checks the bytes, uploads those same archives, verifies their hashes,
-requires independent SDK verification, attests them and creates a prerelease.
-`just publish-check` currently blocks releases: the separate IBM signature package
-for 9.3.0.27 requires Fix Central authentication. Obtain it through
-[IBM's signature route](https://ibm.biz/mq93signatures), verify the archives using
-[IBM's documented commands](https://www.ibm.com/docs/en/ibm-mq/9.3.x?topic=overview-mq-code-signatures),
-and record the authenticated source URL, method and matching SHA-256 for each input
-in `build/publisher-verification.json` through normal code review. Do not fill these
-receipts from the locally calculated hashes alone. Unpublished CI candidate artifacts
-remain available for evaluation while this gate is blocked.
+checks SDK integrity records against the pins, attests them and creates a prerelease.
 
 It never rebuilds at publication. Artifact
 metadata includes the exact distribution SHA and upstream SHA. SDK/runtime files

@@ -4,10 +4,6 @@ Community packaging and installation for [IBM's MQ Prometheus exporter](https://
 This is not an IBM-supported product or an official IBM release. The collector is
 IBM's unchanged source. Distribution versions are independent of upstream versions.
 
-Release publication is currently gated on independent IBM SDK signature/checksum
-verification. The candidate workflow can still produce versioned evaluation
-archives; the [maintainer guide](docs/maintaining.md) gives the exact release gate.
-
 **Initial platform targets are provisional:** RHEL 8.10 / glibc 2.28 and RHEL 9.x /
 glibc 2.34, Linux x86-64, IBM MQ 9.3.0.27 runtime compatibility; and Windows Server
 2019 amd64. The Windows MQ runtime version must be independently established.

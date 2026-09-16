@@ -75,7 +75,7 @@ ci-tool-versions:
 publish version sha: publish-check
     gh release create {{ quote(version) }} dist/* --target {{ quote(sha) }} --prerelease --title {{ quote(version + ' (provisional platform support)') }} --notes-file docs/candidate-notes.md
 
-# Refuse publication until independently verified SDK receipts are recorded.
+# Check SDK integrity records against the pinned build inputs.
 [group('release')]
 publish-check:
     python3 build/publish_check.py
