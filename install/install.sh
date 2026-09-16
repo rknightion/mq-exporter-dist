@@ -7,6 +7,16 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 # Explicitly precede the loader cache, even when inherited LD_LIBRARY_PATH is empty.
 # Do not change LD_PRELOAD or system loader configuration / monitoring injection.
 system_tool() { LD_LIBRARY_PATH=/usr/lib64:/lib64 "$@"; }
+# IBM's native RPM installation owns its top-level directory as mqm (mode 0555).
+# Only that exact runtime directory may use this owner; ancestors and our own
+# installation tree still require root. Mode checks below apply to both owners.
+trusted_directory_owner() {
+  local path=$1 owner=$2 mq_root=$3 mq_uid
+  [[ $owner == 0 ]] && return 0
+  [[ -n $mq_root && $path == "$mq_root" ]] || return 1
+  mq_uid=$(id -u mqm 2>/dev/null) || return 1
+  [[ $owner == "$mq_uid" ]]
+}
 exporter=prometheus # package default
 select_exporter() {
   case "$exporter" in
@@ -95,14 +105,17 @@ glibc=$(system_tool getconf GNU_LIBC_VERSION)
 ((EUID==0)) || die 'run installation as root'
 id "$account" >/dev/null 2>&1 || die 'service account does not exist'
 [[ $(id -u "$account") != 0 ]] || die 'service account must not be root'
-for p in "$root" "$mq"; do
+for path_role in root mq; do
+  p=${!path_role}
   [[ $p == /* && $p != / && $p != *..* && $p =~ ^[a-zA-Z0-9/\ ._()-]+$ ]] || die 'unsafe installation path'
   case "$p" in /home/*|/root/*|/tmp/*|/var/tmp/*) die 'path is hidden by service sandbox';; esac
   [[ $(realpath -m "$p") == "$p" ]] || die 'noncanonical or symlinked path'
   ancestor=$p
+  mq_owner_path=''
+  [[ $path_role != mq ]] || mq_owner_path=$mq
   while [[ $ancestor != / ]]; do
     if [[ -e $ancestor ]]; then
-      [[ $(stat -c %u "$ancestor") == 0 ]] || die 'installation ancestors must be root-owned'
+      trusted_directory_owner "$ancestor" "$(stat -c %u "$ancestor")" "$mq_owner_path" || die 'installation ancestors must be root-owned (MQ runtime may be mqm-owned)'
       perm=$(stat -c %a "$ancestor"); (( (8#$perm & 0022) == 0 )) || die 'installation ancestor is group/world writable'
     fi
     ancestor=$(dirname "$ancestor")
