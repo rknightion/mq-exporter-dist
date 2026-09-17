@@ -3,10 +3,9 @@
 The Bash installer installs a precompiled exporter and a systemd service. It
 supports RHEL 8.10 and RHEL 9.x on x86-64 as provisional targets.
 
-RPM packaging is being validated separately. It uses the same exporter bytes,
-with IBM's upstream version and a community packaging suffix; no signed RPM
-repository is published yet. The archive installer remains the supported candidate
-installation path. See [RPM installation](rpm.md) for the package layout.
+Signed RPMs use the same exporter bytes, with IBM's upstream version and a
+community packaging suffix. No hosted yum repository is published yet. See
+[RPM installation](rpm.md) for verification, installation and package layout.
 
 ## SELinux
 
@@ -43,7 +42,7 @@ into a root shell. Use an explicit version from
 For an existing local queue manager `QM1` and service account `mqmon`:
 
 ```bash
-sudo bash install.sh --version v0.1.0-rc.1 \
+sudo bash install.sh --version v6.0.0 \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
 
@@ -69,8 +68,8 @@ Transfer the archive, its `SHA256SUMS` file and installer through your approved
 channel. The checksum file must come from a trusted source.
 
 ```bash
-sudo bash install.sh --version v0.1.0-rc.1 \
-  --archive /media/mq-exporter-dist-v0.1.0-rc.1-linux-amd64.tar.gz \
+sudo bash install.sh --version v6.0.0 \
+  --archive /media/mq-exporter-dist-v6.0.0-linux-amd64.tar.gz \
   --checksums /media/SHA256SUMS \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```

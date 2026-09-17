@@ -22,11 +22,12 @@ Each download contains one exporter and its installation tools. You do not need
 both packages. Both use unchanged IBM upstream source at `v6.0.0`; distribution
 versions are separate from IBM's exporter version.
 
-## Install a candidate
+## Install v6.0.0
 
-**Platform support is provisional.** Stable v6.0.0 is not available.
-[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases) currently
-provides Prometheus v0.1.0-rc.1. OpenTelemetry packages are not yet published.
+**Platform support remains provisional.** The
+[v6.0.0 release](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0)
+provides separate Prometheus and OpenTelemetry packages for Linux and Windows,
+plus signed Prometheus and OpenTelemetry RPMs.
 
 1. Check the [platform requirements](docs/compatibility.md) and your installed MQ runtime.
 2. Follow the [Linux installation guide](docs/linux.md) or [Windows installation guide](docs/windows.md).
@@ -40,7 +41,8 @@ MAXHANDS, firewall rules or TLS policy.
 
 Initial targets are Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x /
 glibc 2.34, with IBM MQ 9.3.0.27; and Windows Server 2019 amd64.
-The Windows MQ version and native prerequisites need separate validation.
+Live MQ 9.3.0.35 lifecycle checks passed in the disposable lab; exact 9.3.0.27
+server local-bindings acceptance remains outstanding. See the compatibility matrix.
 
 Target servers need an existing licensed 64-bit IBM MQ installation and a
 dedicated service account with the required MQ permissions. The executables

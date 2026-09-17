@@ -121,9 +121,11 @@ publish version sha: publish-check
     sha={{ quote(sha) }}
     [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
     [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
-    flags=()
-    if [[ "$version" == *-rc.* ]]; then flags+=(--prerelease); fi
-    gh release create "$version" dist/* --target "$sha" "${flags[@]}" --title "$version" --notes-file docs/candidate-notes.md
+    if [[ "$version" == *-rc.* ]]; then
+      gh release create "$version" dist/* --target "$sha" --prerelease --title "$version" --notes-file docs/candidate-notes.md
+    else
+      gh release create "$version" dist/* --target "$sha" --title "$version" --notes-file docs/candidate-notes.md
+    fi
 
 # Check SDK integrity records against the pinned build inputs.
 [group('release')]

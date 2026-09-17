@@ -28,7 +28,7 @@ For an existing local queue manager `QM1`:
 
 ```powershell
 $credential = Get-Credential 'EXAMPLE\mqmon'
-.\install.ps1 -Version v0.1.0-rc.1 -Instance qm1 -QueueManager QM1 `
+.\install.ps1 -Version v6.0.0 -Instance qm1 -QueueManager QM1 `
   -ServiceAccount 'EXAMPLE\mqmon' -ServiceCredential $credential -Port 9157
 ```
 
@@ -51,7 +51,7 @@ Transfer the Windows ZIP, trusted `SHA256SUMS` file and installer through your
 approved channel. Add these arguments to the installation command:
 
 ```powershell
--Archive 'D:\Media\mq-exporter-dist-v0.1.0-rc.1-windows-amd64.zip' `
+-Archive 'D:\Media\mq-exporter-dist-v6.0.0-windows-amd64.zip' `
 -Checksums 'D:\Media\SHA256SUMS'
 ```
 

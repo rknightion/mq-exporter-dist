@@ -1,9 +1,29 @@
 # RPM installation
 
-Separate `mq-prometheus` and `mq-otel` RPM candidates wrap the tested Linux archive
+Separate `mq-prometheus` and `mq-otel` RPMs wrap the tested Linux archive
 binaries. Package and repository-metadata signatures use the dedicated project
 key. There is no public hosted yum repository yet. See the
 [compatibility limits](compatibility.md) before deploying an RPM.
+
+Download the two RPMs, `RPM-GPG-KEY-mq-exporter-dist`, `RPM-SHA256SUMS` and
+`RPM-SHA256SUMS.asc` from the
+[v6.0.0 release](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0).
+The signing-key fingerprint is
+`A3D2 D5D6 8404 A4E6 088E 3B2E B031 8897 DDF2 F968`. Verify that fingerprint
+through a separate trusted copy of this documentation before importing the key.
+
+```bash
+gpg --show-keys --fingerprint RPM-GPG-KEY-mq-exporter-dist
+gpg --import RPM-GPG-KEY-mq-exporter-dist
+gpg --verify RPM-SHA256SUMS.asc RPM-SHA256SUMS
+sha256sum -c --ignore-missing RPM-SHA256SUMS
+sudo rpm --import RPM-GPG-KEY-mq-exporter-dist
+rpm --checksig mq-prometheus-6.0.0-6.0.0.mqdist.x86_64.rpm
+sudo dnf install ./mq-prometheus-6.0.0-6.0.0.mqdist.x86_64.rpm
+```
+
+Use the `mq-otel` filename instead to install only the OpenTelemetry exporter.
+Neither RPM installs or changes Prometheus, Alloy or an OTLP receiver.
 
 ## Versions and ownership
 

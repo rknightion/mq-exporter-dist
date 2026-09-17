@@ -5,9 +5,8 @@ pushes MQ metrics over OTLP. This community package uses the same pinned IBM tag
 and vendored dependencies as the Prometheus package, without changing its
 collector. It is not affiliated with IBM or Grafana Labs and comes without warranty.
 
-**Not yet published.** OpenTelemetry packages are not included in v0.1.0-rc.1.
-Use this guide when an OTel candidate appears in
-[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases).
+Download the separate OpenTelemetry package from
+[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0).
 Do not use the Prometheus archive as an OTel package. Check
 [compatibility](compatibility.md) before deployment.
 
@@ -25,7 +24,7 @@ is bundled. Target machines need no compiler, SDK headers or module registry acc
 Use a distinct instance name, for example `qm1-otel`. The shipped installer defaults
 to OTel; the shared repository installer requires `--exporter otel` or
 `-Exporter otel`. Choose the version matching your archive and trusted checksum
-file. For example, after a candidate containing OTel is available:
+file. For example:
 
 ```bash
 sudo bash install.sh --exporter otel --version "$VERSION" \
