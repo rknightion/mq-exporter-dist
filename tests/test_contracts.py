@@ -19,6 +19,29 @@ class Contracts(unittest.TestCase):
         result = subprocess.check_output(["bash", "-c", function + '\nunset LD_LIBRARY_PATH\nsystem_tool bash -c \'printf "%s" "$LD_LIBRARY_PATH"\''], text=True)
         self.assertEqual(result, "/usr/lib64:/lib64")
 
+    def test_invalid_instance_explains_that_it_is_a_local_label(self):
+        result = subprocess.run(
+            [
+                "bash",
+                str(ROOT / "install/install.sh"),
+                "--version",
+                "v6.0.0",
+                "--instance",
+                "QM1",
+                "--qmgr",
+                "QM1",
+                "--service-user",
+                "mqmon",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("local lowercase service label", result.stderr)
+        self.assertIn("not an MQ identifier", result.stderr)
+        self.assertIn("--instance qm1", result.stderr)
+
     def test_build_scripts_compile(self):
         for path in (ROOT / "build").glob("*.py"):
             compile(path.read_text(), str(path), "exec")

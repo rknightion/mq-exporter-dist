@@ -61,6 +61,7 @@ if [[ ${1:-} == --verify-archive ]]; then
 fi
 usage() {
   printf '%s\n' 'install.sh --version vX.Y.Z[-rc.N] --instance qm1 --qmgr QM1 --service-user mqmon' \
+    '  --instance is a local lowercase service label, not an MQ identifier (for example qm1)' \
     '  [--archive FILE --checksums FILE] [--mq-path /opt/mqm] [--root /opt/mq-exporter]' \
     '  [--port 9157] [--queues APP.*,!SYSTEM.*,!AMQ.*] [--channels *]' \
     '  [--exporter prometheus|otel] [--otlp-endpoint https://otel.example.com:4318] [--otlp-insecure]' \
@@ -99,7 +100,7 @@ if [[ $exporter == otel ]]; then
   port=0
 elif [[ -n $endpoint || $insecure == 1 ]]; then die 'OTLP settings require otel exporter'; fi
 [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die 'explicit version required'
-[[ $instance =~ ^[a-z][a-z0-9-]{0,39}$ ]] || die 'invalid instance'
+[[ $instance =~ ^[a-z][a-z0-9-]{0,39}$ ]] || die 'instance must be a local lowercase service label, not an MQ identifier; use --instance qm1 (letters, digits and hyphens; maximum 40 characters)'
 [[ $account =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'existing service account required'
 [[ $qmgr =~ ^[A-Za-z0-9._/%]{1,48}$ ]] || die 'invalid queue manager'
 if [[ $exporter == prometheus ]]; then

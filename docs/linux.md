@@ -46,6 +46,11 @@ sudo bash install.sh --version v6.0.0 \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
 
+`--instance` is a label you choose for this installed service. It is not an IBM MQ
+identifier to look up. Use a lowercase label containing letters, digits and hyphens,
+starting with a letter and no longer than 40 characters, such as `qm1`. The queue
+manager's actual name belongs in `--qmgr`.
+
 The default MQ installation is `/opt/mqm`. Use `--mq-path` for a different
 installation. The exporter lives under `/opt/mq-exporter/qm1`; `--root`
 changes the parent directory. Quote paths containing spaces.

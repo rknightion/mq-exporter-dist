@@ -32,6 +32,11 @@ $credential = Get-Credential 'EXAMPLE\mqmon'
   -ServiceAccount 'EXAMPLE\mqmon' -ServiceCredential $credential -Port 9157
 ```
 
+`-Instance` is a label you choose for the installed Windows service, not an IBM MQ
+identifier to discover. Use a lowercase label containing letters, digits and hyphens,
+starting with a letter and no longer than 40 characters, such as `qm1`. Supply the
+actual queue-manager name through `-QueueManager`.
+
 Use `-MQPath` for a non-default MQ installation and `-InstallRoot` to change the
 exporter installation directory. Quote paths containing spaces. Passwords are
 supplied through the credential prompt, not command-line arguments.
