@@ -87,7 +87,7 @@ if { ((want_native)) && [[ -z $native_version ]]; } || { ((want_custom)) && [[ -
   tags=$(release_tags) || die 'cannot list releases; pass explicit versions'
   for t in native custom; do
     var=${t}_version want=want_$t
-    ((${!want})) && [[ -z ${!var} ]] || continue
+    if ((!${!want})) || [[ -n ${!var} ]]; then continue; fi
     if latest=$(pick_latest "$t" <<< "$tags"); then
       printf -v "$var" '%s' "$latest"; printf 'Latest published %s release: %s\n' "$t" "$latest"
     elif ((implicit)); then printf 'No published %s release; %s instances are not updated.\n' "$t" "$t"
