@@ -357,7 +357,7 @@ rollback() {
 }
 
 current='' fault_pid=''
-# shellcheck disable=SC2329 # invoked by the signal trap
+# shellcheck disable=SC2317,SC2329 # invoked by the signal trap
 interrupted() {
   trap '' INT TERM HUP
   [[ -z $fault_pid ]] || kill "$fault_pid" 2>/dev/null || true

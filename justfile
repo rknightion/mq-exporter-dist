@@ -43,6 +43,7 @@ fmt-check:
 [group('check')]
 lint:
     GOTOOLCHAIN=local go vet ./...
+    GOOS=windows GOARCH=amd64 CGO_ENABLED=0 GOTOOLCHAIN=local go vet ./cmd/... ./internal/...
     shellcheck install/*.sh tests/*.sh
     pwsh -NoProfile -File tests/parse-powershell.ps1
 

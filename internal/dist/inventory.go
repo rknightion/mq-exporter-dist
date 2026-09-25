@@ -14,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 // Instance is an installer-managed exporter that the updater may replace.
@@ -77,7 +76,7 @@ func (s Scanner) trusted(p string, dir bool) error {
 	if fi.Mode().Perm()&0o022 != 0 {
 		return fmt.Errorf("group/world writable")
 	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); ok && st.Uid != s.OwnerUID {
+	if uid, ok := fileOwner(fi); ok && uid != s.OwnerUID {
 		return fmt.Errorf("not root-owned")
 	}
 	if r, e := filepath.EvalSymlinks(s.host(p)); e != nil || r != s.host(p) {
