@@ -47,12 +47,13 @@ usage() {
     '  [--custom-archive FILE --custom-checksums FILE]' \
     '  [--root DIR]... [--instance NAME]... [--dry-run] [--verify health|active]' \
     '  [--health-timeout SECONDS] [--settle SECONDS] [--allow-downgrade] [--include-unhealthy]' \
-    '  Each instance keeps its variant and follows its own track: native Prometheus and' \
-    '  OTel instances follow --native-version, custom instances --custom-version.' \
-    '  With no track options, both tracks update to their newest published release;' \
-    '  --native or --custom limits the run to one track. Offline runs need explicit versions.'
+    '  By default each instance keeps its build: native Prometheus and OTel instances follow' \
+    '  the native track, custom instances the custom track, each to its newest release.' \
+    '  --custom moves every Prometheus instance to the custom build; --native moves them all' \
+    '  to the native build. OTel instances always stay native. Offline runs need explicit versions.'
 }
-native_version='' custom_version='' want_native=0 want_custom=0
+native_version='' custom_version='' switch_to=''
+set_switch() { [[ -z $switch_to || $switch_to == "$1" ]] || die 'choose one of --custom and --native'; switch_to=$1; }
 declare -A archive_arg=() checksums_arg=()
 roots=(/opt/mq-exporter) only=() dry_run=0 verify=health health_timeout=120 settle=20
 allow_downgrade=0 include_unhealthy=0
@@ -62,8 +63,8 @@ while (($#)); do
     --dry-run) dry_run=1; shift; continue;;
     --allow-downgrade) allow_downgrade=1; shift; continue;;
     --include-unhealthy) include_unhealthy=1; shift; continue;;
-    --native) want_native=1; shift; continue;;
-    --custom) want_custom=1; shift; continue;;
+    --native) set_switch native; shift; continue;;
+    --custom) set_switch custom; shift; continue;;
   esac
   (($# >= 2)) || die 'option requires a value'
   case "$1" in
@@ -77,20 +78,25 @@ while (($#)); do
   esac
   shift 2
 done
-# Tracks: explicit versions and --native/--custom select them; nothing selected means both.
-implicit=0
-[[ -z $native_version ]] || want_native=1
-[[ -z $custom_version ]] || want_custom=1
-if ((!want_native && !want_custom)); then want_native=1 want_custom=1 implicit=1; fi
-if { ((want_native)) && [[ -z $native_version ]]; } || { ((want_custom)) && [[ -z $custom_version ]]; }; then
+# Which releases are needed: 2 = required, 1 = used if published, 0 = not needed.
+# Explicit versions alone limit the run to their tracks.
+need_native=0 need_custom=0
+case "$switch_to" in
+  custom) need_custom=2; [[ -n $native_version ]] || need_native=1;;
+  native) need_native=2; [[ -z $custom_version ]] || die '--native moves instances off the custom build; do not also pass --custom-version';;
+  *) if [[ -z $native_version && -z $custom_version ]]; then need_native=1 need_custom=1; fi;;
+esac
+[[ -z $native_version ]] || need_native=2
+[[ -z $custom_version ]] || need_custom=2
+if { ((need_native)) && [[ -z $native_version ]]; } || { ((need_custom)) && [[ -z $custom_version ]]; }; then
   [[ -z ${archive_arg[prometheus]:-}${archive_arg[otel]:-}${archive_arg[custom]:-} ]] || die 'offline updates need explicit --native-version / --custom-version'
   tags=$(release_tags) || die 'cannot list releases; pass explicit versions'
   for t in native custom; do
-    var=${t}_version want=want_$t
-    if ((!${!want})) || [[ -n ${!var} ]]; then continue; fi
+    var=${t}_version need=need_$t
+    if ((!${!need})) || [[ -n ${!var} ]]; then continue; fi
     if latest=$(pick_latest "$t" <<< "$tags"); then
       printf -v "$var" '%s' "$latest"; printf 'Latest published %s release: %s\n' "$t" "$latest"
-    elif ((implicit)); then printf 'No published %s release; %s instances are not updated.\n' "$t" "$t"
+    elif ((${!need} == 1)); then printf 'No published %s release; %s instances are not updated.\n' "$t" "$t"
     else die "no published $t release found"; fi
   done
 fi
@@ -200,7 +206,12 @@ health_json() { timeout 20 "$tool" health --qmgr "$2" --url "http://127.0.0.1:$1
 healthy() { [[ $(health_json "$1" "$2") == *'"connected":true'* ]]; }
 
 for n in "${names[@]}"; do
-  if [[ ${i_exporter[$n]} == otel ]]; then kind[$n]=otel; elif [[ ${i_variant[$n]} == custom ]]; then kind[$n]=custom; else kind[$n]=prometheus; fi
+  if [[ ${i_exporter[$n]} == otel ]]; then kind[$n]=otel
+  elif [[ $switch_to == custom || ( -z $switch_to && ${i_variant[$n]} == custom ) ]]; then kind[$n]=custom
+  else kind[$n]=prometheus; fi
+  switch=''
+  if [[ ${kind[$n]} == custom && ${i_variant[$n]} == native ]]; then switch='switch-to-custom'; fi
+  if [[ ${kind[$n]} == prometheus && ${i_variant[$n]} == custom ]]; then switch='switch-to-native'; fi
   target[$n]=$(kind_version "${kind[$n]}")
   pre_active[$n]=$(systemctl is-active "${i_unit[$n]}" 2>/dev/null || true)
   pre_enabled[$n]=$(systemctl is-enabled "${i_unit[$n]}" 2>/dev/null || true)
@@ -208,7 +219,8 @@ for n in "${names[@]}"; do
   pre_healthy[$n]=no
   if [[ ${i_exporter[$n]} == prometheus && ${pre_active[$n]} == active ]] && healthy "${i_port[$n]}" "${i_qmgr[$n]}"; then pre_healthy[$n]=yes; fi
   if [[ -z ${target[$n]} ]]; then action[$n]=skip-no-target; continue; fi
-  if [[ ${i_version[$n]} != unrecorded ]]; then
+  # Versions on different tracks are not ordered; a variant switch is always a change.
+  if [[ -z $switch && ${i_version[$n]} != unrecorded ]]; then
     cmp=$("$tool" version compare "${i_version[$n]}" "${target[$n]}" 2>/dev/null) || { action[$n]=skip-version-error; continue; }
     if [[ $cmp == 0 ]]; then action[$n]=skip-current; continue; fi
     if [[ $cmp == 1 ]] && ((!allow_downgrade)); then action[$n]=skip-downgrade; continue; fi
@@ -216,7 +228,7 @@ for n in "${names[@]}"; do
   if [[ $verify == health && ${i_exporter[$n]} == prometheus && ${pre_active[$n]} == active && ${pre_healthy[$n]} == no ]] && ((!include_unhealthy)); then
     action[$n]=skip-unhealthy; continue
   fi
-  action[$n]=update
+  action[$n]=${switch:-update}
 done
 
 printf '%-12s %-24s %-6s %-10s %-7s %-22s %-22s %s\n' INSTANCE ROOT PORT EXPORTER VARIANT CURRENT TARGET ACTION
@@ -252,11 +264,12 @@ build_args() {
   password=$("$tool" config-field "$dest/config.json" connection.passwordFile) || die "unreadable configuration for $n"
   [[ -z $user || -z $password ]] || args+=(--user "$user" --password-file "$password")
   ((!allow_downgrade)) || args+=(--allow-downgrade)
+  [[ ${action[$n]} != switch-to-* ]] || args+=(--change-variant)
   printf '%s\0' "${args[@]}"
 }
 targets=()
 for n in "${names[@]}"; do
-  [[ ${action[$n]} == update ]] || continue
+  [[ ${action[$n]} == update || ${action[$n]} == switch-to-* ]] || continue
   prepare "${kind[$n]}"
   build_args "$n" > "$scratch/args-$n"
   mapfile -d '' -t args < "$scratch/args-$n"
@@ -426,7 +439,7 @@ report() {
   printf '\n%-12s %-22s %-22s %s\n' INSTANCE FROM TO RESULT
   for n in "${names[@]}"; do
     local r=${result[$n]:-${action[$n]}}
-    [[ $r != update ]] || r=not-attempted
+    [[ $r != update && $r != switch-to-* ]] || r=not-attempted
     printf '%-12s %-22s %-22s %s%s\n' "$n" "${i_version[$n]}" "${target[$n]:--}" "$r" "${snap[$n]:+ (snapshot ${snap[$n]})}"
   done
 }

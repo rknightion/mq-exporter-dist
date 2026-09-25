@@ -153,7 +153,21 @@ sudo bash update.sh --dry-run   # review the plan
 sudo bash update.sh             # apply it
 ```
 
-`--native` or `--custom` limits a run to one track. Pin exact versions with
+Each instance keeps its build unless you ask to switch:
+
+| Command | Effect |
+|---|---|
+| `update.sh` | Every instance to the newest release of its own build |
+| `update.sh --custom` | Every Prometheus instance to the newest [custom build](custom.md), switching native instances |
+| `update.sh --native` | Every Prometheus instance to the newest native build, switching custom instances back |
+
+OTel instances always use the native build. Add `--instance NAME` to switch or
+update only some instances. A switch is an update like any other: the dry run
+shows it as `switch-to-custom` or `switch-to-native`, configuration and identity
+are preserved, and a failed switch is rolled back. The previous build's binary
+stays in the instance directory.
+
+Pin exact versions with
 `--native-version v6.0.0-2` and `--custom-version v6.0.0-custom-2`; do that for
 change-controlled rollouts so every host gets the same release. Use the `update.sh`
 from the newest archive you are installing.
@@ -188,9 +202,9 @@ from the newest archive you are installing.
    Native and custom releases have separate `SHA256SUMS` files. The OTel archive
    is needed only if the host has OTel instances.
 
-Each instance keeps its variant: native Prometheus and OTel instances follow
-`--native-version`, and custom instances follow `--custom-version`. The updater
-does not change configuration, identity, ports, enablement or whether a service
+Without `--custom` or `--native`, each instance keeps its variant: native
+Prometheus and OTel instances follow `--native-version`, and custom instances
+follow `--custom-version`. The updater does not change configuration, identity, ports, enablement or whether a service
 is running. It skips instances already at the target version, refuses downgrades
 unless given `--allow-downgrade`, and skips a Prometheus instance that is not
 connected to MQ before the update unless given `--include-unhealthy`. That way an

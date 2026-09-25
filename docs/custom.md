@@ -58,6 +58,11 @@ add `--change-variant`. The installer keeps the other variant's binary in place
 and points the service at the new one. Configuration and identity are preserved
 as for any update.
 
+To switch every Prometheus instance on a host, use the updater:
+`sudo bash update.sh --custom` moves them to the custom build, and
+`sudo bash update.sh --native` moves them back. Each switch is snapshotted,
+verified and rolled back on failure.
+
 ## Keep the metric through scrape filtering
 
 If your scrape job keeps an allowlist of metric names, add the new gauge. For
@@ -109,5 +114,5 @@ mapping.
 
 ## Update
 
-Custom and native instances update independently; see
-[updating multiple instances](linux.md#update-all-instances-on-a-host).
+`sudo bash update.sh` updates custom and native instances together, each on its
+own track; see [updating multiple instances](linux.md#update-all-instances-on-a-host).

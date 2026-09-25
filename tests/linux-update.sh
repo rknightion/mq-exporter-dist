@@ -152,6 +152,39 @@ grep -q '^qm2 .*updated' "$work/out" && grep -q '^qm3 .*rolled-back' "$work/out"
 /opt/mq-exporter/qm1/mq-dist health --qmgr QM3 --url http://127.0.0.1:9159/metrics | grep -q '"connected":true' || fail 'rolled-back instance unhealthy'
 pass 'post-update health failure rolled back to the healthy release'
 
+sw() { bash "$work/src/update.sh" "$@" --native-archive "$(asset prometheus v6.0.0-2)" --native-checksums "$sums" \
+  --otel-archive "$(asset otel v6.0.0-2)" --otel-checksums "$sums" --custom-archive "$(asset custom v6.0.0-custom-2)" --custom-checksums "$sums" \
+  --root /srv/mqx --root '/srv/mq x' --settle 1 --health-timeout 15; }
+touch /etc/mq-exporter-update-test-faults
+MQ_DIST_UPDATE_TEST_FAULT=qm1:replaced expect_exit 2 sw --custom --custom-version v6.0.0-custom-2 --native-version v6.0.0-2
+grep -q '^qm1 .*rolled-back' "$work/out" || { cat "$work/out"; fail 'failed switch not rolled back'; }
+[[ $(<"/opt/mq-exporter/qm1/variant") == native && ! -e /opt/mq-exporter/qm1/mq_prometheus_custom ]] || fail 'failed switch left custom files'
+grep -q 'qm1/mq_prometheus" -f' /etc/systemd/system/mq-exporter-qm1.service || fail 'failed switch left the unit on the custom binary'
+[[ $(readlink "/proc/$(pid qm1)/exe") == /opt/mq-exporter/qm1/mq_prometheus ]] || fail 'failed switch not running native'
+rm /etc/mq-exporter-update-test-faults
+pass 'failed native-to-custom switch rolled back without leftover files'
+
+configs=$(config_fingerprint)
+expect_exit 0 sw --custom --custom-version v6.0.0-custom-2 --native-version v6.0.0-2
+for i in qm1 qm4 qm6; do grep -q "^$i .*switch-to-custom" "$work/out" || { cat "$work/out"; fail "$i not planned as switch-to-custom"; }; done
+for d in /opt/mq-exporter/qm1 /srv/mqx/qm4 /srv/mqx/qm6; do
+  [[ $(<"$d/variant") == custom && $(release "$d") == v6.0.0-custom-2 && -f $d/mq_prometheus ]] || fail "switch to custom for $d"
+  grep -q "$(basename "$d")/mq_prometheus_custom\" -f" "/etc/systemd/system/mq-exporter-$(basename "$d").service" || fail "unit not switched for $d"
+done
+[[ $(readlink "/proc/$(pid qm1)/exe") == /opt/mq-exporter/qm1/mq_prometheus_custom && $(pid qm6) == 0 ]] || fail 'switched services in the wrong state'
+[[ $(release /srv/mqx/qm5) == v6.0.0-2 && $(<"/srv/mqx/qm5/variant") == native ]] || fail 'otel instance was switched'
+[[ $(config_fingerprint) == "$configs" ]] || fail 'switch changed configuration, identity or port'
+pass 'update.sh --custom moves every Prometheus instance to the custom build and leaves OTel native'
+
+expect_exit 0 sw --native --native-version v6.0.0-2
+for i in qm1 qm2 qm3 qm4 qm6; do grep -q "^$i .*switch-to-native" "$work/out" || { cat "$work/out"; fail "$i not planned as switch-to-native"; }; done
+for d in /opt/mq-exporter/qm1 /opt/mq-exporter/qm2 '/srv/mq x/qm3' /srv/mqx/qm4 /srv/mqx/qm6; do
+  [[ $(<"$d/variant") == native && $(release "$d") == v6.0.0-2 ]] || fail "switch to native for $d"
+done
+[[ $(readlink "/proc/$(pid qm2)/exe") == /opt/mq-exporter/qm2/mq_prometheus ]] || fail 'qm2 not running native'
+[[ $(config_fingerprint) == "$configs" ]] || fail 'switch back changed configuration, identity or port'
+pass 'update.sh --native moves every Prometheus instance back to the native build'
+
 if bash "$work/src/install.sh" --version v6.0.0-custom-2 --archive "$(asset custom v6.0.0-custom-2)" --checksums "$sums" --service-user mqmon --no-start --instance qm1 --qmgr QM1 --port 9157 > "$work/out" 2>&1; then fail 'variant change accepted without --change-variant'; fi
 grep -q 'explicit --change-variant required' "$work/out" || fail 'variant guard message'
 bash "$work/src/install.sh" --version v6.0.0-custom-2 --archive "$(asset custom v6.0.0-custom-2)" --checksums "$sums" --service-user mqmon --no-start --instance qm1 --qmgr QM1 --port 9157 --change-variant > /dev/null
