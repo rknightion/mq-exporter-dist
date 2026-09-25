@@ -90,7 +90,8 @@ expect_exit() { local want=$1; shift; set +e; "$@" > "$work/out" 2>&1; local got
 
 before=$(fingerprint); configs=$(config_fingerprint)
 expect_exit 0 update v6.0.0-2 v6.0.0-custom-2 --dry-run
-grep -q 'qm1 .*v6.0.0-1 .*v6.0.0-2 .*update' "$work/out" || { cat "$work/out"; fail 'legacy install not identified from known hash or not planned'; }
+# The fake binary matches no published hash; known-hash naming is unit-tested in Go.
+grep -q 'qm1 .*native .*unrecorded .*v6.0.0-2 .*update' "$work/out" || { cat "$work/out"; fail 'legacy install without release record not planned'; }
 grep -q 'qm3 .*/srv/mq x .*custom .*v6.0.0-custom-1 .*v6.0.0-custom-2 .*update' "$work/out" || fail 'alternate-root custom instance not planned'
 grep -q 'qm5 .*otel .*v6.0.0-1 .*v6.0.0-2 .*update' "$work/out" || fail 'otel instance not planned'
 grep -q 'UNMANAGED /usr/local/lib/mqx-manual/mq_prometheus version=unrecorded port=9199' "$work/out" || { cat "$work/out"; fail 'unmanaged copy not reported'; }

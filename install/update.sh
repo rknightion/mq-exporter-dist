@@ -267,7 +267,8 @@ fault() {
       # Simulates an interrupted session; the signal trap performs the rollback.
       printf 'TEST FAULT waiting for a signal at %s %s\n' "$1" "$2" >&2
       : > /run/mq-dist-update-test-waiting
-      sleep 120 & wait "$!"; return 1;;
+      sleep 120 8>&- & fault_pid=$!
+      wait "$fault_pid"; return 1;;
   esac
 }
 
@@ -355,10 +356,11 @@ rollback() {
   journal "$n" 'rollback complete'
 }
 
-current=''
+current='' fault_pid=''
 # shellcheck disable=SC2329 # invoked by the signal trap
 interrupted() {
   trap '' INT TERM HUP
+  [[ -z $fault_pid ]] || kill "$fault_pid" 2>/dev/null || true
   if [[ -n $current ]]; then
     journal "$current" 'interrupted'
     if rollback "$current"; then result[$current]=rolled-back; else result[$current]=ROLLBACK-FAILED; fi

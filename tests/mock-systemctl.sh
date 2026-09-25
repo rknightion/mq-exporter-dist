@@ -13,7 +13,8 @@ start() {
   env=$(sed -n 's/^Environment="LD_LIBRARY_PATH=\(.*\)"$/\1/p' "$(unit_file "$u")")
   bin=$(sed -E 's/^"([^"]+)" -f "([^"]+)"$/\1/' <<< "$exec")
   cfg=$(sed -E 's/^"([^"]+)" -f "([^"]+)"$/\2/' <<< "$exec")
-  LD_LIBRARY_PATH=$env setsid "$bin" -f "$cfg" > "$state/$u.log" 2>&1 < /dev/null &
+  # Like systemd, never hand the caller's lock descriptors to the service.
+  LD_LIBRARY_PATH=$env setsid "$bin" -f "$cfg" > "$state/$u.log" 2>&1 < /dev/null 8>&- 9>&- &
   printf '%s' "$!" > "$state/$u.pid"
 }
 stop() {

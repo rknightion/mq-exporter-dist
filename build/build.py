@@ -272,7 +272,8 @@ def main():
             run("git", "apply", str(negative_patch), cwd=source)
             negative_result = subprocess.run(base + ["go", "test", "-mod=vendor", test_pkg, "-run", "TestQDepthHighLimit"], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             run("git", "apply", "-R", str(negative_patch), cwd=source)
-            if negative_result.returncode == 0:
+            # Only the emission guard's own subtest failing proves the test; a compile error does not.
+            if negative_result.returncode == 0 or "--- FAIL: TestQDepthHighLimit/absent_not_emitted" not in negative_result.stdout:
                 raise RuntimeError("qdepthhi-negative.patch did not make TestQDepthHighLimit fail; the emission guard is not proven under test:\n" + negative_result.stdout)
             test_dest.unlink()
         for executable in (binary, "mq-config-check", "mq-dist"):
