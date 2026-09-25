@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Distribution version, for example v6.0.0 or v6.0.0-rc.1'
+        description: 'Distribution version: native vX.Y.Z, vX.Y.Z-N or vX.Y.Z-N-rc.M (e.g. v6.0.0, v6.0.0-1, v6.0.0-1-rc.2); custom vX.Y.Z-custom-N or vX.Y.Z-custom-N-rc.M builds only the Linux Prometheus archive'
         required: true
         type: string
       publish:
@@ -16,23 +16,47 @@ concurrency:
   group: release
   cancel-in-progress: false
 jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      track: ${{ steps.classify.outputs.track }}
+      matrix: ${{ steps.classify.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: classify
+        shell: bash
+        env:
+          DIST_VERSION: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          sys.path.insert(0, "build")
+          import versions
+
+          track = versions.parse(os.environ["DIST_VERSION"]).track
+          if track == "native":
+              matrix = {"include": [
+                  {"os": "ubuntu-24.04", "platform": "linux", "exporter": "prometheus"},
+                  {"os": "windows-2022", "platform": "windows", "exporter": "prometheus"},
+                  {"os": "ubuntu-24.04", "platform": "linux", "exporter": "otel"},
+                  {"os": "windows-2022", "platform": "windows", "exporter": "otel"},
+              ]}
+          else:
+              matrix = {"include": [{"os": "ubuntu-24.04", "platform": "linux", "exporter": "prometheus"}]}
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("track=" + track + "\n")
+              out.write("matrix=" + json.dumps(matrix) + "\n")
+          PY
   build:
+    needs: setup
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: linux
-            exporter: prometheus
-          - os: windows-2022
-            platform: windows
-            exporter: prometheus
-          - os: ubuntu-24.04
-            platform: linux
-            exporter: otel
-          - os: windows-2022
-            platform: windows
-            exporter: otel
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -66,14 +90,14 @@ jobs:
         shell: bash
         run: just public-check
       - name: Package unsigned RPM candidate without rebuilding exporter
-        if: runner.os == 'Linux' && !inputs.publish
+        if: runner.os == 'Linux' && !inputs.publish && needs.setup.outputs.track == 'native'
         shell: bash
         run: |
           archives=(dist/*linux-amd64.tar.gz)
           test "${#archives[@]}" -eq 1
           just build-rpm "${archives[0]}" "${archives[0]}.sha256"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: runner.os == 'Linux' && !inputs.publish
+        if: runner.os == 'Linux' && !inputs.publish && needs.setup.outputs.track == 'native'
         with:
           name: unsigned-rpm-${{ matrix.exporter }}
           path: .work/rpm-candidates/*
@@ -86,8 +110,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   rpm-check:
-    if: ${{ !inputs.publish }}
-    needs: build
+    if: ${{ !inputs.publish && needs.setup.outputs.track == 'native' }}
+    needs: [setup, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -105,7 +129,7 @@ jobs:
       - name: Validate RPM transactions in EL8 and EL9 userspaces
         run: just test-rpm .work/rpm-candidates
   attest:
-    if: ${{ !inputs.publish }}
+    if: ${{ !inputs.publish && !cancelled() && needs.build.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.rpm-check.result) }}
     needs: [build, rpm-check]
     runs-on: ubuntu-24.04
     timeout-minutes: 10

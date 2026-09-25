@@ -8,8 +8,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-NAMES = ['mq_prometheus', 'mq-config-check', 'mq-dist', 'install.sh', 'diagnose.sh', 'LICENSE', 'THIRD-PARTY-NOTICES.txt', 'build-metadata.json', 'sbom.cdx.json']
-VERSION = 'v0.1.0-rc.1'
+NAMES = ['mq_prometheus', 'mq-config-check', 'mq-dist', 'install.sh', 'update.sh', 'diagnose.sh', 'LICENSE', 'THIRD-PARTY-NOTICES.txt', 'build-metadata.json', 'known-releases.json', 'sbom.cdx.json']
+VERSION = 'v6.0.0-1'
 ASSET = 'mq-exporter-dist-' + VERSION + '-linux-amd64.tar.gz'
 
 

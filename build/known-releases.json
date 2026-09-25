@@ -1,0 +1,68 @@
+[
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "bf4ac1c1009af125e7d493027c9d112f2ea567f8f2d2f842820ed06b52f1e984",
+      "mq-config-check": "e211360fdcb85786a8e7186e8e565239f22afd15094deff04965ba9d4a6d2ed5",
+      "mq-dist": "725a1802379c64b7f559cd8189170db08821e10c01d985edc655f507703e4e71",
+      "mq_prometheus": "cd27a612f677bdb6fad7700c1f6e6290a98d463a3d48af0cbc47f97277d228d7",
+      "sbom.cdx.json": "2977210e27bdfc952de214da02760fac285ebaf9118808a783f634ef2d66aede"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0",
+    "variant": "native"
+  },
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "05f0a2ca24e782c519c30f5e321de85cfe2063e9c6435cac06750705eea0f283",
+      "diagnose.ps1": "5bcc91e117a83e14354326e4d2c5556be6ec59d1bb5d95ee6aaef41002b96677",
+      "install.ps1": "97961aee677d247be0b588c2b918164abaf18d52cfb53b997f17749a93bfa091",
+      "mq-config-check.exe": "00810f0ac4429366c7dc26a0179270a92c312da310465d4734ef648d4be0ab25",
+      "mq-dist.exe": "80cb559c1785c18b7b4a981575b4979e347bb6a2e66fa9e4b0bda9c6b2886bc8",
+      "mq-service.exe": "85b1ddbe186ae429439f5dc856257e14c2459e7186b0072a0f2bcdae486871f4",
+      "mq_prometheus.exe": "f93818f066ff1527e751e2f763bf054a28ca3ea12e3a5430109e1cab5c258b7e",
+      "sbom.cdx.json": "dc5f38a7e95b096db4cc619048bf374603302eaca85dafd3171b69890e5d71cd"
+    },
+    "platform": "windows-amd64",
+    "tag": "v6.0.0",
+    "variant": "native"
+  },
+  {
+    "exporter": "otel",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "834611d7f114506d56ff9964dc6251c8886b7cb0be4284ad25ee089653244780",
+      "mq-config-check": "e4c0741cf439472fb24565b6d593c2fe7593a35eeb9281a2e392d6774b8f782c",
+      "mq-dist": "725a1802379c64b7f559cd8189170db08821e10c01d985edc655f507703e4e71",
+      "mq_otel": "5f30006adac3301945540d759a76e6ca68b69a6deda403c618eb42ce52484762",
+      "sbom.cdx.json": "becbe9489e9af3cbe0ca8ad03d1932bdea7c184871c2a709f3db925dc1b3f97e"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0",
+    "variant": "native"
+  },
+  {
+    "exporter": "otel",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "05f0a2ca24e782c519c30f5e321de85cfe2063e9c6435cac06750705eea0f283",
+      "diagnose.ps1": "5bcc91e117a83e14354326e4d2c5556be6ec59d1bb5d95ee6aaef41002b96677",
+      "install.ps1": "607c3c62f8622c7bfab5c3cc1f236eff3d7b966ee06821d30dc4090ff4090988",
+      "mq-config-check.exe": "7722c58812852e02f22c7b8472471921a72b634d4fe44e41613bdbc830ce1124",
+      "mq-dist.exe": "80cb559c1785c18b7b4a981575b4979e347bb6a2e66fa9e4b0bda9c6b2886bc8",
+      "mq-service.exe": "85b1ddbe186ae429439f5dc856257e14c2459e7186b0072a0f2bcdae486871f4",
+      "mq_otel.exe": "ff833bd478431492cb8585fc83b1d1510483a2291e4cdd355f7ed1c902835d72",
+      "sbom.cdx.json": "6b7ffcd5bae3d0017d9f42482be436bab698b714be2194e9c38dd50bdc9981eb"
+    },
+    "platform": "windows-amd64",
+    "tag": "v6.0.0",
+    "variant": "native"
+  }
+]

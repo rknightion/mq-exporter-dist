@@ -10,9 +10,13 @@ import subprocess
 import tempfile
 
 from public_check import inspect
+import versions
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = 'rknightion/mq-exporter-dist'
+PACKAGE_NAME = re.compile(
+    r'mq-(?:prometheus|otel)-[0-9]+\.[0-9]+\.[0-9]+-'
+    r'[0-9]+\.[0-9]+\.[0-9]+(?:_[1-9][0-9]*)?(?:~rc\.[1-9][0-9]*)?\.mqdist\.x86_64\.rpm')
 
 
 def sha(data):
@@ -59,12 +63,14 @@ def packages(directory, commit):
         raise ValueError('expected two regular RPMs and their checksum/metadata sidecars only')
     records = []
     for rpm in rpms:
-        if not re.fullmatch(r'mq-(prometheus|otel)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+(?:~rc\.[0-9]+)?\.mqdist\.x86_64\.rpm', rpm.name):
+        if not PACKAGE_NAME.fullmatch(rpm.name):
             raise ValueError('unexpected package name')
         data = rpm.read_bytes()
         if rpm.with_name(rpm.name + '.sha256').read_text() != sha(data) + '  ' + rpm.name + '\n':
             raise ValueError('package checksum mismatch')
         meta = json.loads(rpm.with_name(rpm.name + '.metadata.json').read_text())
+        if versions.parse(meta['source']['distribution_version']).track != 'native':
+            raise ValueError('RPM signing is native-only')
         if (meta['rpm_sha256'] != sha(data) or meta['signed'] is not False
                 or meta['packaging_dirty'] is not False or meta['packaging_commit'] != commit
                 or meta['source']['distribution_commit'] != commit

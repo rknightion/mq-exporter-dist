@@ -31,6 +31,18 @@ func TestHealthSamples(t *testing.T) {
 	}
 }
 
+func TestDepthHighLimitSeriesCountsOnlyThisQueueManager(t *testing.T) {
+	body := "ibmmq_qmgr_status{qmgr=\"QM1\"} 2\n" +
+		"ibmmq_queue_attribute_depth_high_limit{qmgr=\"QM1\",queue=\"APP.Q1\"} 80\n" +
+		"ibmmq_queue_attribute_depth_high_limit{qmgr=\"QM1\",queue=\"APP.Q2\"} 0\n" +
+		"ibmmq_queue_attribute_depth_high_limit{qmgr=\"QM2\",queue=\"APP.Q1\"} 35\n" +
+		"ibmmq_queue_attribute_max_depth{qmgr=\"QM1\",queue=\"APP.Q1\"} 5000\n"
+	r, err := Health([]byte(body), "QM1")
+	if err != nil || r.DepthHighLimitSeries != 2 || r.QueueSeries != 3 {
+		t.Fatalf("got %+v, %v", r, err)
+	}
+}
+
 func TestPartialHTTP(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", "999")

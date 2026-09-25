@@ -13,7 +13,7 @@ import (
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("commands: config, health, inspect, replace")
+		return fmt.Errorf("commands: config, config-field, health, inspect, inventory, replace, version")
 	}
 	f := flag.NewFlagSet(os.Args[1], flag.ContinueOnError)
 	switch os.Args[1] {
@@ -54,6 +54,56 @@ func run() error {
 		if m.Version != os.Args[3] || m.Platform != os.Args[4] {
 			return fmt.Errorf("release metadata mismatch")
 		}
+		return nil
+	case "version":
+		// version compare A B prints -1, 0 or 1; version track V prints native or custom.
+		switch {
+		case len(os.Args) == 5 && os.Args[2] == "compare":
+			n, e := dist.CompareVersions(os.Args[3], os.Args[4])
+			if e != nil {
+				return e
+			}
+			fmt.Println(n)
+			return nil
+		case len(os.Args) == 4 && os.Args[2] == "track":
+			v, e := dist.ParseVersion(os.Args[3])
+			if e != nil {
+				return e
+			}
+			fmt.Println(v.Track)
+			return nil
+		}
+		return fmt.Errorf("version compare A B | version track V")
+	case "config-field":
+		if len(os.Args) != 4 {
+			return fmt.Errorf("config file and section.key required")
+		}
+		v, e := dist.ConfigField(os.Args[2], os.Args[3])
+		if e != nil {
+			return e
+		}
+		fmt.Println(v)
+		return nil
+	case "inventory":
+		s := dist.Scanner{}
+		var roots multi
+		known := f.String("known-releases", "", "known-releases.json")
+		f.StringVar(&s.Sysroot, "sysroot", "", "test root prefix")
+		f.Var(&roots, "root", "additional installation root (repeatable)")
+		if e := f.Parse(os.Args[2:]); e != nil {
+			return e
+		}
+		s.Roots = roots
+		k, e := dist.LoadKnown(*known)
+		if e != nil {
+			return e
+		}
+		s.Known = k
+		inv, e := s.Scan()
+		if e != nil {
+			return e
+		}
+		fmt.Print(inv.TSV())
 		return nil
 	case "same-identity":
 		if len(os.Args) != 4 {
@@ -125,6 +175,12 @@ func run() error {
 		return fmt.Errorf("unknown command")
 	}
 }
+
+type multi []string
+
+func (m *multi) String() string     { return fmt.Sprint(*m) }
+func (m *multi) Set(v string) error { *m = append(*m, v); return nil }
+
 func main() {
 	if e := run(); e != nil {
 		fmt.Fprintln(os.Stderr, "ERROR:", e)

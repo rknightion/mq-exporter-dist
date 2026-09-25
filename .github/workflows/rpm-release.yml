@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate_run:
-        description: Successful unpublished Candidate run ID at this main commit
+        description: Successful unpublished native-track Candidate run ID at this main commit (RPMs are native-only; a custom-track run has no unsigned RPM artifacts and is rejected)
         required: true
         type: string
 permissions:

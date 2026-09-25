@@ -1,0 +1,62 @@
+// Disposable-container stand-in for an exporter binary; never packaged.
+// It serves a minimal metrics page from the installer's JSON configuration.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// Set with -ldflags "-X main.unhealthyPorts=9159" to build a release that
+// cannot connect to MQ on the listed ports.
+var unhealthyPorts = ""
+
+func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--help" {
+		fmt.Println("fake exporter")
+		return
+	}
+	if len(os.Args) != 3 || os.Args[1] != "-f" {
+		os.Exit(2)
+	}
+	b, e := os.ReadFile(os.Args[2])
+	if e != nil {
+		os.Exit(1)
+	}
+	var c struct {
+		Connection struct {
+			QueueManager string `json:"queueManager"`
+		} `json:"connection"`
+		Prometheus struct {
+			Port string `json:"port"`
+		} `json:"prometheus"`
+	}
+	if json.Unmarshal(b, &c) != nil {
+		os.Exit(1)
+	}
+	if c.Prometheus.Port == "" {
+		select {} // OTel: no listener
+	}
+	status := "2"
+	for _, p := range strings.Split(unhealthyPorts, ",") {
+		if p == c.Prometheus.Port {
+			status = "0"
+		}
+	}
+	custom := filepath.Base(os.Args[0]) == "mq_prometheus_custom"
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		q := c.Connection.QueueManager
+		fmt.Fprintf(w, "ibmmq_qmgr_status{qmgr=%q} %s\n", q, status)
+		fmt.Fprintf(w, "ibmmq_queue_depth{qmgr=%q,queue=\"APP.Q1\"} 3\n", q)
+		if custom {
+			fmt.Fprintf(w, "ibmmq_queue_attribute_depth_high_limit{qmgr=%q,queue=\"APP.Q1\"} 80\n", q)
+		}
+	})
+	if e := http.ListenAndServe("127.0.0.1:"+c.Prometheus.Port, nil); e != nil {
+		os.Exit(1)
+	}
+}

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import versions
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -86,7 +87,7 @@ def notices(source):
     return "\n\n".join("===== " + str(p.relative_to(source)) + " =====\n" + p.read_text(errors="replace") for p in files)
 
 
-def sbom(source, version, platform, exporter="prometheus"):
+def sbom(source, version, platform, exporter="prometheus", variant="native", patches=None):
     components = []
     roots = [source]
     if platform == "windows-amd64":
@@ -97,17 +98,26 @@ def sbom(source, version, platform, exporter="prometheus"):
             m = re.match(r"# (\S+) (v\S+)$", line)
             if m and (m[1], m[2]) not in seen:
                 seen.add((m[1], m[2]))
-                components.append({"type": "library", "name": m[1], "version": m[2], "purl": "pkg:golang/" + m[1] + "@" + m[2]})
+                component = {"type": "library", "name": m[1], "version": m[2], "purl": "pkg:golang/" + m[1] + "@" + m[2]}
+                # The custom variant's only source modification is the vendored
+                # mq-golang patch; record it as CycloneDX pedigree on that component.
+                if variant == "custom" and patches and m[1] == "github.com/ibm-messaging/mq-golang/v5":
+                    component["pedigree"] = {"patches": [{"type": "unofficial", "diff": {"url": p["name"]}} for p in patches]}
+                components.append(component)
     name = "mq-exporter-dist" if exporter == "prometheus" else "mq-otel-dist"
+    if variant == "custom":
+        name += "-custom"
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "metadata": {"component": {"type": "application", "name": name + "-" + platform, "version": version}}, "components": components}
 
 
-def package(source, output, version, platform, commit, evidence, exporter="prometheus"):
+def package(source, output, version, platform, commit, evidence, exporter="prometheus", variant="native", patches=None):
     # Exact allowlist: never package the SDK, source cache, environment or raw logs.
     windows = platform == "windows-amd64"
     ext = ".exe" if windows else ""
-    binary = "mq_" + exporter
+    binary = "mq_prometheus_custom" if variant == "custom" else "mq_" + exporter
     prefix = "mq-exporter-dist" if exporter == "prometheus" else "mq-otel-dist"
+    if variant == "custom":
+        prefix += "-custom"
     payload = {n + ext: (output / (n + ext)).read_bytes() for n in [binary, "mq-config-check", "mq-dist"]}
     if windows:
         payload["mq-service.exe"] = (output / "mq-service.exe").read_bytes()
@@ -118,6 +128,17 @@ def package(source, output, version, platform, commit, evidence, exporter="prome
         elif name == "install.ps1":
             content = content.replace("[string]$Exporter = 'prometheus'", "[string]$Exporter = '" + exporter + "'")
         payload[name] = content.encode()
+    if not windows:
+        # Every Linux archive (prometheus, otel, custom) carries the multi-instance
+        # updater and the known-releases inventory it and mq-dist consult.
+        update_sh = ROOT / "install/update.sh"
+        if not update_sh.exists():
+            raise RuntimeError("install/update.sh is missing; it must exist before packaging Linux archives")
+        update_content = update_sh.read_text()
+        if "exporter=prometheus # package default" in update_content:
+            update_content = update_content.replace("exporter=prometheus # package default", "exporter=" + exporter + " # package default")
+        payload["update.sh"] = update_content.encode()
+        payload["known-releases.json"] = (ROOT / "build/known-releases.json").read_bytes()
     payload["LICENSE"] = (ROOT / "LICENSE").read_bytes()
     payload["THIRD-PARTY-NOTICES.txt"] = notices(source).encode()
     if windows:
@@ -126,10 +147,14 @@ def package(source, output, version, platform, commit, evidence, exporter="prome
         if not licenses:
             raise RuntimeError("Windows toolchain license notices missing")
         payload["THIRD-PARTY-NOTICES.txt"] += ("\n\nWindows compiler runtime notices\n" + "\n\n".join(str(p.relative_to(ccroot)) + "\n" + p.read_text(errors="replace") for p in licenses)).encode()
-    payload["sbom.cdx.json"] = json.dumps(sbom(source, version, platform, exporter), indent=2, sort_keys=True).encode()
+    payload["sbom.cdx.json"] = json.dumps(sbom(source, version, platform, exporter, variant, patches), indent=2, sort_keys=True).encode()
     metadata = {"distribution_version": version, "distribution_commit": commit, "platform": platform, "exporter": exporter, "inputs": PINS,
+                "variant": variant, "track": "custom" if variant == "custom" else "native",
+                "upstream_tag": PINS["upstream_tag"], "upstream_commit": PINS["upstream_commit"],
                 "compatibility": "provisional; see compatibility matrix", "evidence": evidence,
                 "payload_sha256": {n: hashlib.sha256(b).hexdigest() for n, b in payload.items()}}
+    if variant == "custom":
+        metadata["patches"] = [{"name": p["name"], "sha256": p["sha256"]} for p in patches]
     payload["build-metadata.json"] = json.dumps(metadata, indent=2, sort_keys=True).encode()
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
@@ -149,7 +174,7 @@ def package(source, output, version, platform, commit, evidence, exporter="prome
             for n, b in sorted(payload.items()):
                 info = tarfile.TarInfo(n)
                 info.size = len(b)
-                info.mode = 0o755 if n in [binary, "mq-config-check", "mq-dist", "install.sh", "diagnose.sh"] else 0o644
+                info.mode = 0o755 if n in [binary, "mq-config-check", "mq-dist", "install.sh", "diagnose.sh", "update.sh"] else 0o644
                 t.addfile(info, io.BytesIO(b))
     (dist / (name + ".sha256")).write_text(digest(target) + "  " + name + "\n")
     (dist / (name + ".metadata.json")).write_bytes(payload["build-metadata.json"])
@@ -158,18 +183,31 @@ def package(source, output, version, platform, commit, evidence, exporter="prome
     return target
 
 
+def resolve_track(version_text, platform, exporter):
+    """Parse and validate a distribution version string against the pinned
+    upstream tag and the custom track's platform/exporter restriction.
+    Raises ValueError on any violation; never touches the filesystem or network."""
+    version = versions.parse(version_text)
+    if version.upstream_tag != PINS["upstream_tag"]:
+        raise ValueError("distribution version's upstream part " + version.upstream_tag + " does not match the pinned upstream_tag " + PINS["upstream_tag"])
+    if version.track == "custom" and (platform != "linux" or exporter != "prometheus"):
+        raise ValueError("the custom track only supports linux + prometheus")
+    return version
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("platform", choices=["linux", "windows"])
     parser.add_argument("version")
     parser.add_argument("--exporter", choices=["prometheus", "otel"], default="prometheus")
     args = parser.parse_args()
-    binary = "mq_" + args.exporter
     config_args = [] if args.exporter == "prometheus" else ["--exporter", "otel", "--otlp-endpoint", "https://otel.example.com:4318"]
     if run("just", "--evaluate", "go_version", cwd=ROOT).strip('"') != PINS["go_version"]:
         raise RuntimeError("Go build input and task-interface versions differ")
-    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", args.version):
-        raise ValueError("expected an explicit vX.Y.Z or vX.Y.Z-rc.N distribution version")
+    version = resolve_track(args.version, args.platform, args.exporter)
+    track = version.track
+    source_binary = "mq_" + args.exporter
+    binary = "mq_prometheus_custom" if track == "custom" else source_binary
     # Release automation must operate on committed source, including all packaging files.
     if run("git", "status", "--porcelain", cwd=ROOT):
         raise RuntimeError("commit and review distribution changes before building release bytes")
@@ -186,11 +224,19 @@ def main():
     run("git", "clone", "--quiet", "--depth", "1", "--branch", PINS["upstream_tag"], "https://github.com/ibm-messaging/mq-metric-samples.git", str(source), env=env)
     if run("git", "rev-parse", "HEAD", cwd=source) != PINS["upstream_commit"]:
         raise RuntimeError("upstream tag changed")
+    patches = None
+    if track == "custom":
+        # Only reviewed patches touch the custom track; the native track builds
+        # upstream unchanged.
+        patch_path = ROOT / "build/patches/qdepthhi.patch"
+        run("git", "apply", "--check", str(patch_path), cwd=source)
+        run("git", "apply", str(patch_path), cwd=source)
+        patches = [{"name": patch_path.name, "sha256": digest(patch_path)}]
     output = work / "output"
     output.mkdir()
     check = source / "dist-check"
     check.mkdir()
-    shutil.copyfile(source / "cmd" / binary / "config.go", check / "config.go")
+    shutil.copyfile(source / "cmd" / source_binary / "config.go", check / "config.go")
     shutil.copyfile(ROOT / "build/configcheck.go.txt", check / "main.go")
     if args.platform == "linux":
         go = cache / "go-linux.tar.gz"
@@ -205,9 +251,30 @@ def main():
         def container(*cmd):
             return run(*(base + list(cmd)))
         flags = ["-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags=-buildid="]
-        container("go", "build", *flags, "-o", "/work/output/" + binary, "./cmd/" + binary)
+        container("go", "build", *flags, "-o", "/work/output/" + binary, "./cmd/" + source_binary)
+        contains_metric = b"attribute_depth_high_limit" in (output / binary).read_bytes()
+        if track == "custom" and not contains_metric:
+            raise RuntimeError("custom binary is missing the attribute_depth_high_limit metric string")
+        if track != "custom" and contains_metric:
+            raise RuntimeError("native binary unexpectedly contains the custom attribute_depth_high_limit metric string")
         container("go", "build", *flags, "-o", "/work/output/mq-config-check", "./dist-check")
         container("bash", "-c", "cd /project && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-buildid= -o /work/output/mq-dist ./cmd/mq-dist")
+        if track == "custom":
+            # Prove the DEPTH_HIGH_LIMIT test actually exercises the emission
+            # guard: it must pass against the applied patch, and a variant
+            # with the guard's Set=true path reverted must make it fail.
+            test_pkg = "./vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/"
+            test_dest = source / "vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/qdepthhi_test.go"
+            shutil.copyfile(ROOT / "tests/qdepthhi_test.go.txt", test_dest)
+            container("go", "test", "-mod=vendor", test_pkg, "-run", "TestQDepthHighLimit")
+            negative_patch = ROOT / "build/patches/qdepthhi-negative.patch"
+            run("git", "apply", "--check", str(negative_patch), cwd=source)
+            run("git", "apply", str(negative_patch), cwd=source)
+            negative_result = subprocess.run(base + ["go", "test", "-mod=vendor", test_pkg, "-run", "TestQDepthHighLimit"], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            run("git", "apply", "-R", str(negative_patch), cwd=source)
+            if negative_result.returncode == 0:
+                raise RuntimeError("qdepthhi-negative.patch did not make TestQDepthHighLimit fail; the emission guard is not proven under test:\n" + negative_result.stdout)
+            test_dest.unlink()
         for executable in (binary, "mq-config-check", "mq-dist"):
             container("/work/output/mq-dist", "inspect", "/work/output/" + executable)
         container("env", "LD_BIND_NOW=1", "/work/output/" + binary, "--help")
@@ -246,8 +313,10 @@ def main():
         if not match or tuple(map(int, match.groups())) < (2, 37):
             raise RuntimeError("Windows GCC requires binutils >= 2.37 (DWARF 5)")
         flags = ["-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags=-buildid="]
-        for name, pkg in [(binary, "./cmd/" + binary), ("mq-config-check", "./dist-check")]:
+        for name, pkg in [(binary, "./cmd/" + source_binary), ("mq-config-check", "./dist-check")]:
             run(str(gobin), "build", *flags, "-o", str(output / (name + ".exe")), pkg, cwd=source, env=env)
+        if b"attribute_depth_high_limit" in (output / (binary + ".exe")).read_bytes():
+            raise RuntimeError("native Windows binary unexpectedly contains the custom attribute_depth_high_limit metric string")
         env["CGO_ENABLED"] = "0"
         run(str(gobin), "build", "-trimpath", "-buildvcs=false", "-ldflags=-buildid=", "-o", str(output / "mq-dist.exe"), "./cmd/mq-dist", cwd=ROOT, env=env)
         wrapper = prepare_service(work, cache)
@@ -266,7 +335,7 @@ def main():
         run(str(output / "mq-config-check.exe"), "-f", str(output / "config.json"), env=env)
         run(str(Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"), "-NoProfile", "-File", str(ROOT / "tests/windows-runtime.ps1"), "-Output", str(output), "-MQPath", str(work / "mq"), "-Exporter", args.exporter, env=env)
         evidence = {"compiled": True, "loader_smoke": "Windows build host; NOT Server 2019 proof", "config_reader": "PASS: actual upstream initConfig", "service_lifecycle": "unavailable", "live_mq": "unavailable", "server_2019": "unavailable", "build_image": "windows-2022 hosted runner; toolchain archives pinned", "go": run(str(gobin), "version", env=env), "linker": linker, "compiler": run(str(work / "cc/mingw64/bin/gcc.exe"), "--version").splitlines()[0], "dll_imports": dlls}
-    target = package(source, output, args.version, args.platform + "-amd64", commit, evidence, args.exporter)
+    target = package(source, output, args.version, args.platform + "-amd64", commit, evidence, args.exporter, track, patches)
     if args.platform == "linux":
         subprocess.run(["docker", "run", "--rm", "--platform", "linux/amd64", "-v", str(ROOT) + ":/project:ro", "-v", str(ROOT / "dist") + ":/artifacts:ro", "-v", str(work / "mq") + ":/sdk-input:ro", image,
                         "bash", "/project/tests/linux-install.sh", "/artifacts/" + target.name, args.version, args.exporter], check=True)

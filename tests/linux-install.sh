@@ -17,6 +17,7 @@ archive=$1
 version=$2
 exporter=${3:-prometheus}
 binary=mq_$exporter
+[[ $(basename "$archive") != mq-exporter-dist-custom-* ]] || binary=mq_prometheus_custom
 extra=(--exporter "$exporter")
 if [[ $exporter == otel ]]; then extra+=(--otlp-endpoint https://otel.example.com:4318); fi
 args=(--version "$version" --archive "$archive" --checksums "$archive.sha256" --service-user mqmon --no-start "${extra[@]}")

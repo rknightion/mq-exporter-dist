@@ -17,7 +17,9 @@ type HealthResult struct {
 	Connected   bool    `json:"connected"`
 	Status      float64 `json:"status"`
 	QueueSeries int     `json:"queue_series"`
-	Coverage    string  `json:"coverage"`
+	// Samples of the custom variant's QDEPTHHI gauge; always 0 for native builds.
+	DepthHighLimitSeries int    `json:"depth_high_limit_series"`
+	Coverage             string `json:"coverage"`
 }
 
 var sample = regexp.MustCompile(`^([a-zA-Z_:][a-zA-Z0-9_:]*)\{(.*)\}\s+([^\s]+)(?:\s+[0-9]+)?$`)
@@ -79,6 +81,9 @@ func Health(b []byte, qmgr string) (HealthResult, error) {
 			result.Connected = value == 2
 		} else {
 			result.QueueSeries++
+			if m[1] == "ibmmq_queue_attribute_depth_high_limit" {
+				result.DepthHighLimitSeries++
+			}
 		}
 	}
 	if e := s.Err(); e != nil {

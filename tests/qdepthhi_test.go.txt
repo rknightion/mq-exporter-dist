@@ -1,0 +1,192 @@
+package mqmetric
+
+// Modified by mq-exporter-dist: added to test the DEPTH_HIGH_LIMIT patch
+// (ATTR_Q_DEPTH_HIGH_LIMIT, build/patches/qdepthhi.patch), per Apache
+// License 2.0 section 4(b). This file did not exist upstream; the build
+// copies it into this vendored package as qdepthhi_test.go before running
+// `go test -mod=vendor` against it.
+
+import (
+	"testing"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
+)
+
+func qdepthhiStrParam(parameter int32, value string) *ibmmq.PCFParameter {
+	p := new(ibmmq.PCFParameter)
+	p.Type = ibmmq.MQCFT_STRING
+	p.Parameter = parameter
+	p.String = []string{value}
+	return p
+}
+
+func qdepthhiIntParam(parameter int32, value int64) *ibmmq.PCFParameter {
+	p := new(ibmmq.PCFParameter)
+	p.Type = ibmmq.MQCFT_INTEGER
+	p.Parameter = parameter
+	p.Int64Value = []int64{value}
+	return p
+}
+
+// qdepthhiReply builds a synthetic PCF reply message (header + parameter
+// bytes) the same way the real INQUIRE_Q / INQUIRE_Q_STATUS handlers build
+// the outgoing command: by round-tripping through PCFParameter.Bytes(), which
+// is exactly what ibmmq.ReadPCFParameter (called by parseQAttrData/parseQData)
+// decodes.
+func qdepthhiReply(params ...*ibmmq.PCFParameter) (*ibmmq.MQCFH, []byte) {
+	cfh := ibmmq.NewMQCFH()
+	cfh.CompCode = ibmmq.MQCC_OK
+	cfh.ParameterCount = int32(len(params))
+	var buf []byte
+	for _, p := range params {
+		buf = append(buf, p.Bytes()...)
+	}
+	return cfh, buf
+}
+
+// resetQDepthHiTestState gives each subtest a clean qInfoMap and clears any
+// samples already collected on the shared, package-level QueueStatus so
+// subtests cannot see each other's data.
+func resetQDepthHiTestState(t *testing.T) {
+	t.Helper()
+	if connectionMap[DEFAULT_CONNECTION_KEY] == nil {
+		initConnection("")
+	}
+	QueueInitAttributes()
+	qInfoMap = make(map[string]*ObjInfo)
+	for _, attr := range []string{ATTR_Q_NAME, ATTR_Q_MAX_DEPTH, ATTR_Q_USAGE, ATTR_Q_DEPTH_HIGH_LIMIT} {
+		a, ok := QueueStatus.Attributes[attr]
+		if !ok {
+			t.Fatalf("attribute %s was not registered by QueueInitAttributes", attr)
+		}
+		a.Values = make(map[string]*StatusValue)
+	}
+}
+
+// inquireDepthHighLimit simulates the INQUIRE_Q reply handling done by
+// inquireQueueAttributes, for just the two fields this test cares about.
+func inquireDepthHighLimit(qName string, value int64) {
+	cfh, buf := qdepthhiReply(qdepthhiStrParam(ibmmq.MQCA_Q_NAME, qName), qdepthhiIntParam(ibmmq.MQIA_Q_DEPTH_HIGH_LIMIT, value))
+	parseQAttrData(cfh, buf)
+}
+
+// collectQStatus simulates the INQUIRE_Q_STATUS reply handling done by
+// collectQueueStatus: a status reply only ever names the queue, and the
+// depth-high-limit sample (like MAXDEPTH/USAGE) comes from qInfoMap, not
+// from fields in this buffer.
+func collectQStatus(qName string) {
+	cfh, buf := qdepthhiReply(qdepthhiStrParam(ibmmq.MQCA_Q_NAME, qName))
+	parseQData(OT_Q, cfh, buf)
+}
+
+// startPollCycle mimics the per-poll reset CollectQueueStatus does before
+// calling collectQueueStatus/parseQData ("Empty any collected values"). Real
+// polls never carry a value forward from the previous cycle; skipping this
+// between two collectQStatus calls in a test would manufacture a stale-value
+// failure that production code cannot hit.
+func startPollCycle() {
+	for _, attr := range []string{ATTR_Q_NAME, ATTR_Q_MAX_DEPTH, ATTR_Q_USAGE, ATTR_Q_DEPTH_HIGH_LIMIT} {
+		QueueStatus.Attributes[attr].Values = make(map[string]*StatusValue)
+	}
+}
+
+func depthHighLimitSample(t *testing.T, qName string) (int64, bool) {
+	t.Helper()
+	v, ok := QueueStatus.Attributes[ATTR_Q_DEPTH_HIGH_LIMIT].Values[qName]
+	if !ok {
+		return 0, false
+	}
+	return v.ValueInt64, true
+}
+
+func TestQDepthHighLimit(t *testing.T) {
+	t.Run("80 emitted", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		qInfoMap["APP.Q1"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		inquireDepthHighLimit("APP.Q1", 80)
+		collectQStatus("APP.Q1")
+		v, ok := depthHighLimitSample(t, "APP.Q1")
+		if !ok || v != 80 {
+			t.Fatalf("expected a depth-high-limit sample of 80, got ok=%v v=%d", ok, v)
+		}
+	})
+
+	t.Run("0 emitted", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		qInfoMap["APP.Q2"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		inquireDepthHighLimit("APP.Q2", 0)
+		collectQStatus("APP.Q2")
+		v, ok := depthHighLimitSample(t, "APP.Q2")
+		if !ok || v != 0 {
+			t.Fatalf("expected a depth-high-limit sample of 0 (a legitimate value, not treated as absent), got ok=%v v=%d", ok, v)
+		}
+	})
+
+	t.Run("absent not emitted", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		// Discovered (qInfoMap has an entry), but this queue's INQUIRE_Q
+		// reply never carried MQIA_Q_DEPTH_HIGH_LIMIT (eg a queue manager
+		// below the command level that returns the attribute), so
+		// AttrDepthHighLimitSet stays false.
+		qInfoMap["APP.Q3"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		collectQStatus("APP.Q3")
+		if _, ok := depthHighLimitSample(t, "APP.Q3"); ok {
+			t.Fatalf("expected no depth-high-limit sample for a queue whose attribute was never returned")
+		}
+	})
+
+	t.Run("changed value after re-inquiry", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		qInfoMap["APP.Q1"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		inquireDepthHighLimit("APP.Q1", 50)
+		collectQStatus("APP.Q1")
+		if v, ok := depthHighLimitSample(t, "APP.Q1"); !ok || v != 50 {
+			t.Fatalf("expected 50 before re-inquiry, got ok=%v v=%d", ok, v)
+		}
+		inquireDepthHighLimit("APP.Q1", 90)
+		startPollCycle()
+		collectQStatus("APP.Q1")
+		if v, ok := depthHighLimitSample(t, "APP.Q1"); !ok || v != 90 {
+			t.Fatalf("expected 90 after re-inquiry (rediscoverInterval refresh), got ok=%v v=%d", ok, v)
+		}
+	})
+
+	t.Run("reset clears a removed attribute", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		qInfoMap["APP.Q1"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		inquireDepthHighLimit("APP.Q1", 80)
+		collectQStatus("APP.Q1")
+		if _, ok := depthHighLimitSample(t, "APP.Q1"); !ok {
+			t.Fatalf("expected a sample before the attribute is removed")
+		}
+		// Simulate the discoverQueues rediscovery reset (discover.go, beside
+		// the AttrMaxDepth = defaultMaxQDepth reset) for a queue whose
+		// DEPTH_HIGH_LIMIT has since been unset via ALTER QLOCAL in MQSC:
+		// AttrDepthHighLimitSet is cleared, and this rediscovery's INQUIRE_Q
+		// reply no longer carries the attribute at all.
+		qInfoMap["APP.Q1"].AttrMaxDepth = defaultMaxQDepth
+		qInfoMap["APP.Q1"].AttrDepthHighLimitSet = false
+		startPollCycle()
+		collectQStatus("APP.Q1")
+		if _, ok := depthHighLimitSample(t, "APP.Q1"); ok {
+			t.Fatalf("expected the sample to be cleared once the attribute is unset, not left stale")
+		}
+	})
+
+	t.Run("reply for a queue not in qInfoMap is ignored", func(t *testing.T) {
+		resetQDepthHiTestState(t)
+		qInfoMap["APP.Q1"] = &ObjInfo{exists: true, AttrMaxDepth: defaultMaxQDepth}
+		before := len(qInfoMap)
+		// A batched INQUIRE_Q/QSTATUS reply can name a queue this exporter
+		// instance is not monitoring; it must be ignored, not added to
+		// qInfoMap and not given a sample.
+		inquireDepthHighLimit("APP.NOTMONITORED", 42)
+		collectQStatus("APP.NOTMONITORED")
+		if len(qInfoMap) != before {
+			t.Fatalf("expected qInfoMap to be unchanged, got %d entries (was %d)", len(qInfoMap), before)
+		}
+		if _, ok := depthHighLimitSample(t, "APP.NOTMONITORED"); ok {
+			t.Fatalf("expected no depth-high-limit sample for an unmonitored queue")
+		}
+	})
+}

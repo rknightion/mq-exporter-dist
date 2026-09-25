@@ -57,6 +57,22 @@ test:
 [group('check')]
 check: fmt-check lint test docs-build
 
+# Exercise the multi-instance updater with a built Linux Prometheus archive (requires Docker and a prior build-linux).
+[group('check')]
+test-linux-update archive:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p .work
+    work=$(mktemp -d "$PWD/.work/update-test-XXXXXXXX")
+    mkdir "$work/fake" "$work/sdk"
+    cp tests/fake-exporter.go.txt "$work/fake/main.go"
+    (cd "$work/fake" && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath -o "$work/fake-exporter" main.go)
+    (cd "$work/fake" && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath -ldflags '-X main.unhealthyPorts=9159' -o "$work/fake-exporter-bad" main.go)
+    tar -xzf .work/downloads/mq-linux.tar.gz -C "$work/sdk"
+    docker run --rm --platform linux/amd64 -v "$PWD:/project:ro" -v "$(realpath {{ quote(archive) }}):/input/archive.tar.gz:ro" \
+      -v "$work:/fixtures:ro" -v "$work/sdk:/sdk-input:ro" mq-exporter-dist-builder:local \
+      bash /project/tests/linux-update.sh /input/archive.tar.gz /fixtures/fake-exporter /fixtures/fake-exporter-bad
+
 # Build pinned Linux candidate archives (requires Docker).
 [group('build')]
 build-linux version exporter="prometheus":
@@ -112,20 +128,22 @@ release-index:
 ci-tool-versions:
     @printf 'go=%s\npython=%s\n' '{{ go_version }}' '{{ python_version }}'
 
-# Publish verified release bytes without rebuilding; rc versions remain prereleases.
+# Publish verified release bytes without rebuilding; rc versions remain prereleases and custom releases never become "latest".
 [group('release')]
 publish version sha: publish-check
     #!/usr/bin/env bash
     set -euo pipefail
     version={{ quote(version) }}
     sha={{ quote(sha) }}
-    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
     [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
-    if [[ "$version" == *-rc.* ]]; then
-      gh release create "$version" dist/* --target "$sha" --prerelease --title "$version" --notes-file docs/candidate-notes.md
-    else
-      gh release create "$version" dist/* --target "$sha" --title "$version" --notes-file docs/candidate-notes.md
+    output=$(python3 -c 'import sys; sys.path.insert(0, "build"); import versions; v = versions.parse(sys.argv[1]); print(v.track, "true" if v.prerelease else "false")' "$version")
+    read -r track prerelease <<<"$output"
+    args=(--target "$sha" --title "$version" --notes-file docs/candidate-notes.md)
+    if [[ "$track" == custom ]]; then
+      args=(--target "$sha" --title "$version" --notes-file docs/custom-notes.md --latest=false)
     fi
+    if [[ "$prerelease" == true ]]; then args+=(--prerelease); fi
+    gh release create "$version" dist/* "${args[@]}"
 
 # Check SDK integrity records against the pinned build inputs.
 [group('release')]

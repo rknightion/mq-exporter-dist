@@ -12,7 +12,7 @@ PAGES = {
     "README.md": "index.md",
     "SECURITY.md": "security.md",
     **{"docs/" + name + ".md": name + ".md" for name in (
-        "compatibility", "safety", "prometheus", "otel", "linux", "rpm", "windows", "configuration", "troubleshooting")},
+        "compatibility", "safety", "prometheus", "custom", "otel", "linux", "rpm", "windows", "configuration", "troubleshooting")},
 }
 
 

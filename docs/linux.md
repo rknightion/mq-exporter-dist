@@ -125,12 +125,110 @@ Use a separate instance and port for each Prometheus exporter, for example
 binaries, systemd unit and journal stream. Do not reuse service names or ports
 across different installation roots.
 
-To update, run the installer with the new version and the same instance identity.
-Existing configuration is preserved and binaries are backed up. `--replace-config`
-explicitly replaces configuration; changing connection identity also needs
-`--repoint`. These options do not change MQ objects or permissions.
+To update one instance, run the installer with the new version and the same
+instance identity. Existing configuration is preserved and binaries are backed up.
+`--replace-config` explicitly replaces configuration; changing connection identity
+also needs `--repoint`. These options do not change MQ objects or permissions.
+The installer refuses an older version of the same track unless you add
+`--allow-downgrade`, and refuses to switch between the native and
+[custom](custom.md) builds unless you add `--change-variant`.
 
-The installer smoke-tests the staged replacement before replacing binaries. It
-does not roll back every configuration or unit edit. If an update fails, read the
-error and inspect the `.bak-*` files before restarting. See
-[installation safety](safety.md) for backup and filesystem behaviour.
+Each instance records its installed release in `release` and its build variant in
+`variant`. Instances installed before `v6.0.0-1` have neither file and are treated
+as native builds.
+
+## Update all instances on a host
+
+`update.sh`, included in every Linux archive, finds the instances this installer
+manages and updates them one at a time. Use the `update.sh` from the newest
+archive you are installing. When native and custom instances share a host, give
+both versions in one run.
+
+1. Review the plan. A dry run changes nothing:
+
+   ```bash
+   sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-2 --dry-run
+   ```
+
+   The updater finds instances from their systemd units, including alternate
+   `--root` directories. It lists each instance's root, port, exporter, variant,
+   current version and target, and the action it will take. Add `--root DIR` to
+   also report instance directories under another root that have no matching unit.
+
+2. Read the `UNMANAGED` lines. They list exporter copies the updater will not
+   touch: RPM installations, units or drop-ins it did not create, and running
+   exporter processes outside the managed layout. Each line shows the binary path,
+   version if known, listening port, and the reason. Update those copies with
+   the tool that installed them.
+
+3. Run the update without `--dry-run`. Offline hosts pass the archives and
+   checksum files explicitly:
+
+   ```bash
+   sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-2 \
+     --native-archive mq-exporter-dist-v6.0.0-2-linux-amd64.tar.gz --native-checksums native/SHA256SUMS \
+     --otel-archive mq-otel-dist-v6.0.0-2-linux-amd64.tar.gz --otel-checksums native/SHA256SUMS \
+     --custom-archive mq-exporter-dist-custom-v6.0.0-custom-2-linux-amd64.tar.gz --custom-checksums custom/SHA256SUMS
+   ```
+
+   Native and custom releases have separate `SHA256SUMS` files. The OTel archive
+   is needed only if the host has OTel instances.
+
+Each instance keeps its variant: native Prometheus and OTel instances follow
+`--native-version`, and custom instances follow `--custom-version`. The updater
+does not change configuration, identity, ports, enablement or whether a service
+is running. It skips instances already at the target version, refuses downgrades
+unless given `--allow-downgrade`, and skips a Prometheus instance that is not
+connected to MQ before the update unless given `--include-unhealthy`. That way an
+existing outage is not mistaken for a failed update.
+
+Before changing anything, the updater runs the installer's full preflight for
+every target, including ownership and permission checks and the upstream
+configuration reader. If any preflight fails, it stops with no changes.
+
+For each instance in turn, it:
+
+- snapshots the instance's files and unit into `<root>/.update-backups/<instance>.<random>/`,
+  with a manifest of each file's hash, owner, mode and SELinux context;
+- installs the new binaries without starting them, then restarts the service only
+  if it was running;
+- checks that a new process runs the new file and stays up, and that a Prometheus
+  instance reconnects to its queue manager (`--verify health`, the default).
+  `--verify active` checks only the service. For custom instances with queue
+  series, it also checks that the QDEPTHHI gauge is present.
+
+If an instance fails, the updater restores it from its snapshot and stops. It
+removes files the update created, restores owners, modes and SELinux contexts,
+and restores enablement and running state. It does not continue to the remaining
+instances.
+
+| Exit | Meaning |
+|---|---|
+| 0 | Every targeted instance was updated and verified, or nothing needed updating |
+| 1 | Nothing was changed (argument, archive or preflight failure) |
+| 2 | Partial: earlier instances were updated, one failed and was rolled back, and later ones were not attempted |
+| 3 | A rollback failed; restore that instance manually |
+
+The final table reports each instance as `updated`, `rolled-back`,
+`ROLLBACK-FAILED`, `not-attempted` or `skip-*`. A signal (Ctrl-C, SIGTERM or a
+dropped SSH session) rolls back the instance in progress before exiting. Run
+long updates in `tmux` or `screen` anyway.
+
+### Recovery
+
+Rerunning the same command is safe: updated instances show `skip-current`.
+If an instance reports `ROLLBACK-FAILED`, stop its service and restore it from
+the snapshot directory named in the report:
+
+- `manifest` lists each file by number and path, and whether it existed before the update. For each file that existed, it also records the file's SHA-256, owner, mode and SELinux context.
+- `files/<number>` is the pre-update copy of each file that existed.
+- `created/` holds files the update added, already moved out of the way.
+- `journal` and `install.log` record what happened.
+
+Copy each `files/<number>` back to its path, apply the recorded owner and mode
+with `chown` and `chmod`, then run `restorecon` on those paths. Run
+`systemctl daemon-reload`, then restart the service and check it with `mq-dist health`.
+Snapshots are never deleted automatically. Remove old ones once you no longer need them.
+
+The installer smoke-tests the staged replacement before replacing binaries.
+See [installation safety](safety.md) for backup and filesystem behaviour.

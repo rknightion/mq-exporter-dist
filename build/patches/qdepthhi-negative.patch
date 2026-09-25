@@ -1,0 +1,16 @@
+--- a/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/queue.go
++++ b/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/queue.go
+@@ -479,12 +479,7 @@
+ 		st.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
+ 		usage := s.AttrUsage
+ 		st.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
+-		// mq-exporter-dist custom variant: only emit a sample when the
+-		// attribute was actually returned by the most recent INQUIRE_Q, so a
+-		// removed/absent attribute does not linger as a stale value.
+-		if s.AttrDepthHighLimitSet {
+-			st.Attributes[ATTR_Q_DEPTH_HIGH_LIMIT].Values[key] = newStatusValueInt64(s.AttrDepthHighLimit)
+-		}
++		st.Attributes[ATTR_Q_DEPTH_HIGH_LIMIT].Values[key] = newStatusValueInt64(s.AttrDepthHighLimit)
+ 	}
+ 	traceExitF("parseQData", 0, "Key: %s", key)
+ 	return key

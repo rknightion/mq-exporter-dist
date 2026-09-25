@@ -1,0 +1,31 @@
+{
+  "valid": [
+    {"version": "v6.0.0", "track": "native", "upstream": "6.0.0", "revision": 0, "rc": null},
+    {"version": "v6.0.0-rc.1", "track": "native", "upstream": "6.0.0", "revision": 0, "rc": 1},
+    {"version": "v6.0.0-1", "track": "native", "upstream": "6.0.0", "revision": 1, "rc": null},
+    {"version": "v6.0.0-1-rc.2", "track": "native", "upstream": "6.0.0", "revision": 1, "rc": 2},
+    {"version": "v6.0.0-12", "track": "native", "upstream": "6.0.0", "revision": 12, "rc": null},
+    {"version": "v6.0.0-custom-1", "track": "custom", "upstream": "6.0.0", "revision": 1, "rc": null},
+    {"version": "v6.0.0-custom-1-rc.1", "track": "custom", "upstream": "6.0.0", "revision": 1, "rc": 1},
+    {"version": "v0.1.0-rc.8", "track": "native", "upstream": "0.1.0", "revision": 0, "rc": 8},
+    {"version": "v10.20.30-custom-7", "track": "custom", "upstream": "10.20.30", "revision": 7, "rc": null}
+  ],
+  "invalid": [
+    "6.0.0", "v6.0", "v06.0.0", "v6.00.0", "v6.0.0-0", "v6.0.0-01", "v6.0.0-custom",
+    "v6.0.0-custom-0", "v6.0.0-custom-rc.1", "v6.0.0-rc.0", "v6.0.0-rc.01", "v6.0.0-1-rc",
+    "v6.0.0-custom-1-custom-2", "v6.0.0-rc.1-1", "v6.0.0;id", "v6.0.0-1\n", " v6.0.0", "V6.0.0",
+    "v6.0.0+build", "v6.0.0-custom1"
+  ],
+  "ordered": {
+    "native": ["v0.1.0-rc.8", "v6.0.0-rc.1", "v6.0.0-rc.2", "v6.0.0", "v6.0.0-1-rc.1", "v6.0.0-1-rc.2", "v6.0.0-1", "v6.0.0-2", "v6.0.0-10", "v6.0.1-rc.1", "v6.0.1", "v6.1.0"],
+    "custom": ["v6.0.0-custom-1-rc.1", "v6.0.0-custom-1-rc.10", "v6.0.0-custom-1", "v6.0.0-custom-2", "v6.0.1-custom-1"]
+  },
+  "cross_track": [["v6.0.0-1", "v6.0.0-custom-1"]],
+  "rpm_release": [
+    {"version": "v6.0.0", "release": "6.0.0.mqdist"},
+    {"version": "v6.0.0-rc.1", "release": "6.0.0~rc.1.mqdist"},
+    {"version": "v6.0.0-1-rc.2", "release": "6.0.0_1~rc.2.mqdist"},
+    {"version": "v6.0.0-1", "release": "6.0.0_1.mqdist"},
+    {"version": "v6.0.0-2", "release": "6.0.0_2.mqdist"}
+  ]
+}

@@ -24,16 +24,21 @@ trusted_directory_owner() {
   [[ $owner == "$mq_uid" ]]
 }
 exporter=prometheus # package default
+version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(custom-)?[1-9][0-9]*)?(-rc\.[1-9][0-9]*)?$'
+# Track follows the version: vX.Y.Z-custom-N is the QDEPTHHI-enhanced build.
+version_track() { [[ $1 == *-custom-* ]] && printf custom || printf native; }
 select_exporter() {
-  case "$exporter" in
-    prometheus) binary=mq_prometheus; prefix='mq-exporter-dist';;
-    otel) binary=mq_otel; prefix='mq-otel-dist';;
+  case "$exporter:$variant" in
+    prometheus:native) binary=mq_prometheus; prefix='mq-exporter-dist';;
+    prometheus:custom) binary=mq_prometheus_custom; prefix='mq-exporter-dist-custom';;
+    otel:native) binary=mq_otel; prefix='mq-otel-dist';;
+    otel:custom) die 'the custom variant is only available for the Prometheus exporter';;
     *) die 'exporter must be prometheus or otel';;
   esac
 }
 verify_archive() (
   local archive=$1 checksums=$2 version=$3 scratch asset expected actual
-  [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die 'invalid version'
+  [[ $version =~ $version_pattern ]] || die 'invalid version'
   [[ -f $archive && -f $checksums ]] || die 'archive and checksum file required'
   asset=$prefix-$version-linux-amd64.tar.gz
   expected=$(awk -v n="$asset" '$2==n {print $1}' "$checksums")
@@ -45,16 +50,16 @@ verify_archive() (
   trap 'rm -rf -- "$scratch"' EXIT
   tar -tzf "$archive" > "$scratch/names"
   tar -tvzf "$archive" > "$scratch/types"
-  [[ $(wc -l < "$scratch/names") -eq 9 ]] || die 'unexpected archive file count'
-  [[ $(sort -u "$scratch/names" | wc -l) -eq 9 ]] || die 'duplicate archive entries'
+  [[ $(wc -l < "$scratch/names") -eq 11 ]] || die 'unexpected archive file count'
+  [[ $(sort -u "$scratch/names" | wc -l) -eq 11 ]] || die 'duplicate archive entries'
   while IFS= read -r name; do
-    case "$name" in "$binary"|mq-config-check|mq-dist|install.sh|diagnose.sh|LICENSE|THIRD-PARTY-NOTICES.txt|build-metadata.json|sbom.cdx.json) ;; *) die 'unexpected archive path';; esac
+    case "$name" in "$binary"|mq-config-check|mq-dist|install.sh|update.sh|diagnose.sh|LICENSE|THIRD-PARTY-NOTICES.txt|build-metadata.json|known-releases.json|sbom.cdx.json) ;; *) die 'unexpected archive path';; esac
   done < "$scratch/names"
   while IFS= read -r entry; do [[ ${entry:0:1} == - ]] || die 'archive links and special files forbidden'; done < "$scratch/types"
 )
 if [[ ${1:-} == --verify-archive ]]; then
   (($#==4 || $#==5)) || die '--verify-archive ARCHIVE CHECKSUMS VERSION [prometheus|otel]'
-  exporter=${5:-$exporter}; select_exporter
+  exporter=${5:-$exporter}; variant=$(version_track "$4"); select_exporter
   verify_archive "$2" "$3" "$4"
   printf 'Archive integrity and layout: PASS (no executable run)\n'
   exit 0
@@ -67,12 +72,14 @@ usage() {
     '  [--exporter prometheus|otel] [--otlp-endpoint https://otel.example.com:4318] [--otlp-insecure]' \
     '  [--mode bindings|client --channel NAME --conn-name mq.example.com(1414)]' \
     '  [--ccdt URL] [--user MQUSER --password-file FILE]' \
-    '  [--replace-config] [--repoint] [--no-start] [--list-qmgrs]'
+    '  [--variant native|custom] [--change-variant] [--allow-downgrade]' \
+    '  [--replace-config] [--repoint] [--no-start] [--preflight-only] [--list-qmgrs]' \
+    '  vX.Y.Z-N installs the upstream-native build; vX.Y.Z-custom-N the QDEPTHHI-enhanced build'
 }
 version='' instance='' qmgr='' account='' archive='' checksums='' mq=/opt/mqm root=/opt/mq-exporter
 port=9157 queues='APP.*,!SYSTEM.*,!AMQ.*' channels='*' mode=bindings channel='' conn='' ccdt='' user='' password=''
 replace=0 repoint=0 start=1 list=0
-endpoint='' insecure=0
+endpoint='' insecure=0 variant='' change_variant=0 allow_downgrade=0 preflight_only=0
 while (($#)); do
   case "$1" in
     --help|-h) usage; exit 0;;
@@ -81,25 +88,31 @@ while (($#)); do
     --no-start) start=0; shift; continue;;
     --list-qmgrs) list=1; shift; continue;;
     --otlp-insecure) insecure=1; shift; continue;;
+    --change-variant) change_variant=1; shift; continue;;
+    --allow-downgrade) allow_downgrade=1; shift; continue;;
+    --preflight-only) preflight_only=1; shift; continue;;
   esac
   (($# >= 2)) || die 'option requires a value'
   case "$1" in
     --version) version=$2;; --instance) instance=$2;; --qmgr) qmgr=$2;; --service-user) account=$2;;
     --archive) archive=$2;; --checksums) checksums=$2;; --mq-path) mq=$2;; --root) root=$2;;
     --port) port=$2;; --queues) queues=$2;; --channels) channels=$2;; --mode) mode=$2;;
-    --exporter) exporter=$2;; --otlp-endpoint) endpoint=$2;;
+    --exporter) exporter=$2;; --otlp-endpoint) endpoint=$2;; --variant) variant=$2;;
     --channel) channel=$2;; --conn-name) conn=$2;; --ccdt) ccdt=$2;; --user) user=$2;; --password-file) password=$2;;
     *) die 'unknown option';;
   esac
   shift 2
 done
 if ((list)); then exec "$mq/bin/dspmq" -o installation; fi
+[[ $version =~ $version_pattern ]] || die 'explicit version required'
+track=$(version_track "$version")
+[[ -z $variant || $variant == "$track" ]] || die "variant $variant does not match version $version; use a vX.Y.Z-custom-N version for the custom variant"
+variant=$track
 select_exporter
 if [[ $exporter == otel ]]; then
   [[ -n $endpoint ]] || die 'OTLP endpoint required'
   port=0
 elif [[ -n $endpoint || $insecure == 1 ]]; then die 'OTLP settings require otel exporter'; fi
-[[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die 'explicit version required'
 [[ $instance =~ ^[a-z][a-z0-9-]{0,39}$ ]] || die 'instance must be a local lowercase service label, not an MQ identifier; use --instance qm1 (letters, digits and hyphens; maximum 40 characters)'
 [[ $account =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'existing service account required'
 [[ $qmgr =~ ^[A-Za-z0-9._/%]{1,48}$ ]] || die 'invalid queue manager'
@@ -198,6 +211,44 @@ env LD_BIND_NOW=1 LD_LIBRARY_PATH="$mq/lib64:/usr/lib64:/lib64" timeout 20 "$scr
 chmod 755 "$scratch" "$scratch/payload"
 chown "$account" "$scratch/config.json"; chmod 600 "$scratch/config.json"
 runuser -u "$account" -- env -i PATH=/usr/bin:/bin LD_BIND_NOW=1 LD_LIBRARY_PATH="$mq/lib64:/usr/lib64:/lib64" timeout 20 "$scratch/payload/mq-config-check" -f "$config" || die 'upstream configuration validation failed'
+# Installs without a variant record predate the custom track and are native.
+check_release() {
+  local current_variant=native current_version=''
+  if [[ -e $dest/variant ]]; then
+    [[ -f $dest/variant && ! -L $dest/variant ]] || die 'variant record must be a regular file'
+    current_variant=$(<"$dest/variant")
+  fi
+  if [[ -e $dest/release ]]; then
+    [[ -f $dest/release && ! -L $dest/release ]] || die 'release record must be a regular file'
+    current_version=$(head -n 1 "$dest/release")
+  fi
+  if [[ -e $dest/identity && $current_variant != "$variant" ]] && ((!change_variant)); then
+    die "instance runs the $current_variant variant; explicit --change-variant required"
+  fi
+  if [[ -n $current_version && $current_variant == "$variant" ]]; then
+    [[ $current_version =~ $version_pattern ]] || die 'recorded release version is invalid'
+    if [[ $("$helper" version compare "$current_version" "$version") == 1 ]] && ((!allow_downgrade)); then
+      die "instance has $current_version; explicit --allow-downgrade required"
+    fi
+  fi
+}
+check_release
+if ((preflight_only)); then
+  # Port and identity are rechecked under the lock during the real run.
+  printf 'Preflight %s %s instance %s: PASS (no changes made)\n' "$version" "$variant" "$instance"
+  exit 0
+fi
+# One host-wide lock covers installers and the multi-instance updater. An updater
+# passes its locked descriptor as fd 8; flock on a shared description succeeds.
+host_lock=/run/lock/mq-exporter.lock
+[[ -d /run/lock && ! -L /run/lock ]] || mkdir -m 755 /run/lock
+[[ ! -L $host_lock ]] || die 'host lock must not be a symlink'
+if [[ ${MQ_EXPORTER_LOCK_FD:-} == 8 && -e /proc/self/fd/8 ]]; then
+  [[ $(stat -L -c %d:%i /proc/self/fd/8) == $(stat -c %d:%i "$host_lock") ]] || die 'inherited lock descriptor is not the host lock'
+else
+  exec 8>"$host_lock"
+fi
+flock -n 8 || die 'another installer or updater is active'
 mkdir -p "$dest"
 chmod 755 "$root" "$dest"
 exec 9>"$root/.install.lock"
@@ -210,6 +261,7 @@ done
 if [[ -e $dest/identity ]] && ! cmp -s "$dest/identity" "$scratch/identity"; then
   ((repoint && replace)) || die 'instance changed during preflight'
 fi
+check_release
 for name in "$binary" mq-config-check mq-dist; do "$helper" replace "$scratch/payload/$name" "$dest/$name"; done
 if [[ ! -e $dest/config.json || $replace == 1 ]]; then
   "$helper" replace "$scratch/config.json" "$dest/config.json"
@@ -218,6 +270,11 @@ fi
 "$helper" replace "$scratch/identity" "$dest/identity"
 printf '%s\n' "$port" > "$scratch/port"
 "$helper" replace "$scratch/port" "$dest/port"
+printf '%s\n' "$variant" > "$scratch/variant"
+"$helper" replace "$scratch/variant" "$dest/variant"
+sum=$(sha256sum "$dest/$binary")
+printf '%s\n' "$version" "$exporter" "$variant" "$binary" "${sum%% *}" > "$scratch/release"
+"$helper" replace "$scratch/release" "$dest/release"
 cat > "$scratch/$unit" <<EOF
 [Unit]
 Description=IBM MQ exporter instance $instance (community distribution)
@@ -247,11 +304,11 @@ EOF
 chmod 644 "$scratch/$unit"
 systemd-analyze verify "$scratch/$unit" || die 'unit validation failed'
 "$helper" replace "$scratch/$unit" "/etc/systemd/system/$unit"
-restore_labels "$root" "$dest" "$dest/$binary" "$dest/mq-config-check" "$dest/mq-dist" "$dest/config.json" "$dest/identity" "$dest/port" "/etc/systemd/system/$unit"
+restore_labels "$root" "$dest" "$dest/$binary" "$dest/mq-config-check" "$dest/mq-dist" "$dest/config.json" "$dest/identity" "$dest/port" "$dest/variant" "$dest/release" "/etc/systemd/system/$unit"
 systemctl daemon-reload
 systemctl enable "$unit"
 if ((start)); then systemctl restart "$unit"; fi
-printf 'Installed %s, instance %s. Connection and queue coverage are not yet verified.\n' "$version" "$instance"
+printf 'Installed %s (%s variant), instance %s. Connection and queue coverage are not yet verified.\n' "$version" "$variant" "$instance"
 if [[ $exporter == prometheus ]]; then
   printf 'Check: "%s/mq-dist" health --qmgr "%s" --url "http://127.0.0.1:%s/metrics"\n' "$dest" "$qmgr" "$port"
 else printf 'Verify queue-manager attributes and queue metrics at your OTLP receiver; no HTTP health listener is provided.\n'; fi

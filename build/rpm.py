@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 
 from public_check import inspect
+import versions
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,9 +55,17 @@ def publish_bundle(target, rpm_bytes, evidence):
 def rpm_version(tag, distribution):
     if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
         raise ValueError("upstream must be an exact release tag")
-    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", distribution):
-        raise ValueError("invalid distribution version")
-    return tag[1:], distribution[1:].replace("-rc.", "~rc.") + ".mqdist"
+    version = versions.parse(distribution)
+    if version.track != "native":
+        raise ValueError("RPM packaging is native-only")
+    if version.upstream_tag != tag:
+        raise ValueError("distribution upstream must equal the release tag")
+    release = version.upstream
+    if version.revision:
+        release += "_" + str(version.revision)
+    if version.rc is not None:
+        release += "~rc." + str(version.rc)
+    return version.upstream, release + ".mqdist"
 
 
 def verified_payload(archive, checksums):
@@ -67,13 +76,18 @@ def verified_payload(archive, checksums):
         raise ValueError("missing, duplicate or mismatched archive checksum")
     with tarfile.open(archive) as tar:
         members = tar.getmembers()
-        if len(members) != 9 or any(not m.isfile() or m.size > 128 * 1024 * 1024 for m in members):
+        if len(members) not in (9, 11) or any(not m.isfile() or m.size > 128 * 1024 * 1024 for m in members):
             raise ValueError("unsafe archive member/count")
         names = [m.name for m in members]
+        if len(set(names)) != len(names):
+            raise ValueError("duplicate archive member names")
         common = {"mq-dist", "mq-config-check", "install.sh", "diagnose.sh", "LICENSE",
                   "THIRD-PARTY-NOTICES.txt", "build-metadata.json", "sbom.cdx.json"}
-        if set(names) not in [common | {"mq_prometheus"}, common | {"mq_otel"}]:
-            raise ValueError("unexpected or duplicate payload paths")
+        extended = common | {"update.sh", "known-releases.json"}
+        native = [common | {"mq_prometheus"}, common | {"mq_otel"},
+                  extended | {"mq_prometheus"}, extended | {"mq_otel"}]
+        if set(names) not in native:
+            raise ValueError("unexpected, duplicate or custom-track payload paths")
         payload = {m.name: tar.extractfile(m).read() for m in members}
     for name, data in payload.items():
         inspect(data, name)

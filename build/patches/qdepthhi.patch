@@ -1,0 +1,112 @@
+--- a/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/queue.go
++++ b/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/queue.go
+@@ -19,6 +19,10 @@
+      Mark Taylor - Initial Contribution
+ */
+ 
++// Modified by mq-exporter-dist: added the attribute_depth_high_limit queue
++// metric (DEPTH_HIGH_LIMIT), per Apache License 2.0 section 4(b). This file
++// carries changed notices from the original ibm-messaging/mq-golang source.
++
+ /*
+ Functions in this file use the DISPLAY QSTATUS, DISPLAY QUEUE and RESET QSTATS commands
+ to extract metrics about MQ queues
+@@ -44,8 +48,12 @@
+ 	ATTR_Q_SINCE_PUT   = "time_since_put"
+ 	ATTR_Q_SINCE_GET   = "time_since_get"
+ 	ATTR_Q_MAX_DEPTH   = "attribute_max_depth"
+-	ATTR_Q_USAGE       = "attribute_usage"
+-	ATTR_Q_CURMAXFSIZE = "qfile_max_size"
++	// mq-exporter-dist custom variant only: percentage (0-100) of MAXDEPTH at
++	// which the queue manager should raise the Q_DEPTH_HIGH event, refreshed
++	// on rediscovery. Always-on: registered with newStatusMapEntryRequired.
++	ATTR_Q_DEPTH_HIGH_LIMIT = "attribute_depth_high_limit"
++	ATTR_Q_USAGE            = "attribute_usage"
++	ATTR_Q_CURMAXFSIZE      = "qfile_max_size"
+ 	// Uncommitted messages - on Distributed platforms, this is any integer;
+ 	// but on z/OS it only indicates 0/1 (MQQSUM_NO/YES)
+ 	ATTR_Q_UNCOM = "uncommitted_messages"
+@@ -135,6 +143,9 @@
+ 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
+ 
+ 	newStatusMapEntryRequired(st, ot, ATTR_Q_MAX_DEPTH, "Queue Max Depth", DUMMY_PCFATTR)
++	// mq-exporter-dist custom variant: always-on, like ATTR_Q_MAX_DEPTH, so
++	// metric filters cannot silently drop it.
++	newStatusMapEntryRequired(st, ot, ATTR_Q_DEPTH_HIGH_LIMIT, "Queue Depth High Limit", DUMMY_PCFATTR)
+ 	newStatusMapEntryRequired(st, ot, ATTR_Q_USAGE, "Queue Usage", DUMMY_PCFATTR)
+ 
+ 	s := newStatusMapEntry(st, ot, ATTR_Q_QTIME_SHORT, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR, false)
+@@ -350,7 +361,8 @@
+ 		pcfparm = new(ibmmq.PCFParameter)
+ 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
+ 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
+-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQIA_DEFINITION_TYPE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME)}
++		// mq-exporter-dist custom variant: also inquire MQIA_Q_DEPTH_HIGH_LIMIT.
++		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQIA_DEFINITION_TYPE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME), int64(ibmmq.MQIA_Q_DEPTH_HIGH_LIMIT)}
+ 		if ci.showCustomAttribute {
+ 			pcfparm.Int64Value = append(pcfparm.Int64Value, int64(ibmmq.MQCA_CUSTOM))
+ 		}
+@@ -467,6 +479,12 @@
+ 		st.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
+ 		usage := s.AttrUsage
+ 		st.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
++		// mq-exporter-dist custom variant: only emit a sample when the
++		// attribute was actually returned by the most recent INQUIRE_Q, so a
++		// removed/absent attribute does not linger as a stale value.
++		if s.AttrDepthHighLimitSet {
++			st.Attributes[ATTR_Q_DEPTH_HIGH_LIMIT].Values[key] = newStatusValueInt64(s.AttrDepthHighLimit)
++		}
+ 	}
+ 	traceExitF("parseQData", 0, "Key: %s", key)
+ 	return key
+@@ -580,6 +598,14 @@
+ 				}
+ 			}
+ 			//fmt.Printf("MaxQDepth for %s = %d \n",qName,v)
++		// mq-exporter-dist custom variant: DEPTH_HIGH_LIMIT is a legitimate 0,
++		// unlike MAXDEPTH/USAGE above, so there is deliberately no v>0 guard.
++		case ibmmq.MQIA_Q_DEPTH_HIGH_LIMIT:
++			v := elem.Int64Value[0]
++			if qInfo, ok := qInfoMap[qName]; ok {
++				qInfo.AttrDepthHighLimit = v
++				qInfo.AttrDepthHighLimitSet = true
++			}
+ 		case ibmmq.MQIA_USAGE:
+ 			v := elem.Int64Value[0]
+ 			if v > 0 {
+--- a/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/discover.go
++++ b/vendor/github.com/ibm-messaging/mq-golang/v5/mqmetric/discover.go
+@@ -19,6 +19,10 @@
+      Mark Taylor - Initial Contribution
+ */
+ 
++// Modified by mq-exporter-dist: added ObjInfo.AttrDepthHighLimit(Set) and its
++// reset in discoverQueues, per Apache License 2.0 section 4(b). This file
++// carries changed notices from the original ibm-messaging/mq-golang source.
++
+ /*
+ Functions in this file discover the data available from a queue manager
+ via the MQ V9 pub/sub monitoring feature. Each metric (element) is
+@@ -91,6 +95,11 @@
+ 	AttrUsage    int64  // Normal or XMITQ
+ 	DefType      int64  // Predefined or temp/perm dynamic queue
+ 	Cluster      string // The name of a single cluster in which the queue is shared (CLUSTERNL not supported here)
++	// mq-exporter-dist custom variant only: the queue's DEPTH_HIGH_LIMIT
++	// attribute (percentage of MAXDEPTH), and whether the most recent
++	// INQUIRE_Q actually returned it.
++	AttrDepthHighLimit    int64
++	AttrDepthHighLimitSet bool
+ 	// Some channel information
+ 	AttrMaxInst  int64
+ 	AttrMaxInstC int64
+@@ -816,6 +825,10 @@
+ 				qInfoElem = new(ObjInfo)
+ 			}
+ 			qInfoElem.AttrMaxDepth = defaultMaxQDepth
++			// mq-exporter-dist custom variant: clear the high-limit sample on
++			// every rediscovery pass, so a queue whose attribute is removed
++			// (or that drops out of the pattern) stops reporting a stale value.
++			qInfoElem.AttrDepthHighLimitSet = false
+ 			qInfoElem.exists = true
+ 			qInfoMap[qName] = qInfoElem
+ 		}

@@ -25,11 +25,42 @@ Each exporter has separate Linux and Windows archives. The default exporter is
 Prometheus. Build inputs and workspaces remain in ignored local storage and are
 never part of the public payload.
 
-Public release versions follow the pinned IBM exporter source, not the MQ runtime:
-exporter v6.0.0 uses distribution v6.0.0, with `-rc.N` for candidates. Distribution
-and upstream identities remain separate fields in build metadata. Earlier v0.1.0
-candidates predate this naming convention. The MQ SDK/runtime version is an
-independent compatibility requirement and does not determine the release version.
+Public release versions follow the pinned IBM exporter source, not the MQ runtime.
+There are two tracks with independent counters and separate GitHub releases:
+
+| Track | Stable | Candidate | Contents |
+|---|---|---|---|
+| Native | `v6.0.0`, then `v6.0.0-1`, `v6.0.0-2` | `v6.0.0-1-rc.1` | Unchanged upstream: Prometheus and OTel, Linux and Windows, RPMs |
+| Custom | `v6.0.0-custom-1`, `v6.0.0-custom-2` | `v6.0.0-custom-1-rc.1` | Linux Prometheus with `build/patches/` applied |
+
+`-N` counts distribution revisions (packaging, installer or CI changes) of the same
+upstream tag. `build/versions.py` defines the grammar and ordering, and
+`tests/version-vectors.json` pins them for Python, Go, Bash and PowerShell.
+SemVer tools treat `v6.0.0-1` as a prerelease sorting below `v6.0.0`; never use them
+to order these tags. `just build-linux VERSION` builds the custom variant when the
+version is on the custom track. Custom releases are published with `--latest=false`.
+
+Distribution and upstream identities remain separate fields in build metadata,
+which also records the variant and the SHA-256 of each applied patch. The MQ
+SDK/runtime version is an independent compatibility requirement and does not
+determine the release version. RPM Release maps `v6.0.0-1` to `6.0.0_1.mqdist` and
+`v6.0.0-1-rc.2` to `6.0.0_1~rc.2.mqdist`, both sorting after `6.0.0.mqdist`.
+
+### Custom patches
+
+A custom patch applies with `git apply --check` to the pinned upstream clone, touches
+only the files it names, and carries an Apache-2.0 modification notice. It needs
+regression tests that run inside the build container and are shown to fail without
+the patch. When upgrading the upstream pin, re-derive each patch against the new
+source; never force-apply it.
+
+### Before publishing a stable release
+
+Compare every `payload_sha256` entry of each final archive's metadata with the
+lab-tested candidate. The version-bearing `build-metadata.json` and `sbom.cdx.json`
+are the only expected differences. Also compare unchanged platforms with the last
+accepted release. Add every new Linux release's payload hashes to
+`build/known-releases.json`, so the updater can name installs that predate release records.
 
 ## Upgrade a dependency
 

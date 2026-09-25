@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)][ValidatePattern('^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$')][string]$Version,
+    [Parameter(Mandatory=$true)][ValidatePattern('\Av(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[1-9][0-9]*)?(-rc\.[1-9][0-9]*)?\z', Options='None')][string]$Version,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-z][a-z0-9-]{0,39}$')][string]$Instance,
     [Parameter(Mandatory=$true)][string]$QueueManager,
     [Parameter(Mandatory=$true)][string]$ServiceAccount,

@@ -33,6 +33,36 @@ class SigningTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rpm_sign.validate_run(altered, 'a' * 40)
 
+    def test_package_name_accepts_revision_and_candidate_forms(self):
+        valid = ['mq-prometheus-6.0.0-6.0.0.mqdist.x86_64.rpm',
+                 'mq-otel-6.0.0-6.0.0_1.mqdist.x86_64.rpm',
+                 'mq-prometheus-6.0.0-6.0.0_1~rc.2.mqdist.x86_64.rpm',
+                 'mq-otel-6.0.0-6.0.0~rc.1.mqdist.x86_64.rpm']
+        for name in valid:
+            with self.subTest(name=name):
+                self.assertTrue(rpm_sign.PACKAGE_NAME.fullmatch(name))
+        invalid = ['mq-prometheus-6.0.0-6.0.0_01.mqdist.x86_64.rpm',
+                   'mq-prometheus-6.0.0-6.0.0_1~rc.02.mqdist.x86_64.rpm',
+                   'mq-prometheus-6.0.0-6.0.0_1.mqdist.custom.x86_64.rpm']
+        for name in invalid:
+            with self.subTest(name=name):
+                self.assertIsNone(rpm_sign.PACKAGE_NAME.fullmatch(name))
+
+    def test_custom_track_source_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            for exporter in ('prometheus', 'otel'):
+                rpm = path / f'mq-{exporter}-6.0.0-6.0.0_1.mqdist.x86_64.rpm'
+                rpm.write_bytes(b'synthetic')
+                digest = hashlib.sha256(b'synthetic').hexdigest()
+                rpm.with_name(rpm.name + '.sha256').write_text(digest + '  ' + rpm.name + '\n')
+                metadata = {'rpm_sha256': digest, 'signed': False, 'packaging_dirty': False,
+                            'packaging_commit': 'a' * 40, 'source': {'distribution_commit': 'a' * 40,
+                            'distribution_version': 'v6.0.0-custom-1', 'platform': 'linux-amd64', 'exporter': exporter}}
+                rpm.with_name(rpm.name + '.metadata.json').write_text(json.dumps(metadata))
+            with self.assertRaises(ValueError):
+                rpm_sign.packages(path, 'a' * 40)
+
     def test_package_identity_checks_and_integrity(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
