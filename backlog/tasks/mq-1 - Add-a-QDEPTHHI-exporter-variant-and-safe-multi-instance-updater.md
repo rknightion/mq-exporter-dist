@@ -1,10 +1,11 @@
 ---
 id: MQ-1
 title: Add a QDEPTHHI exporter variant and safe multi-instance updater
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-09-25 09:18'
-updated_date: '2026-09-25 09:18'
+updated_date: '2026-09-25 10:00'
 labels: []
 dependencies: []
 references:
