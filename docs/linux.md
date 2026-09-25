@@ -34,15 +34,20 @@ need curl. The installer does not install packages or grant MQ permissions.
 
 Download `install.sh` from a reviewed repository revision, or extract it from a
 release archive after verifying its checksum. Do not pipe a network response
-into a root shell. Use an explicit version from
-[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases).
+into a root shell.
+
+Without `--version`, the installer downloads the newest published release: the
+upstream-native build by default, or the [custom QDEPTHHI build](custom.md) with
+`--custom`. Pin a version from
+[GitHub Releases](https://github.com/rknightion/mq-exporter-dist/releases) for
+repeatable installs.
 
 ## Install Prometheus
 
 For an existing local queue manager `QM1` and service account `mqmon`:
 
 ```bash
-sudo bash install.sh --version v6.0.0 \
+sudo bash install.sh --version v6.0.0-1 \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
 
@@ -140,14 +145,23 @@ as native builds.
 ## Update all instances on a host
 
 `update.sh`, included in every Linux archive, finds the instances this installer
-manages and updates them one at a time. Use the `update.sh` from the newest
-archive you are installing. When native and custom instances share a host, give
-both versions in one run.
+manages and updates them one at a time. On an online host, one command updates
+every instance to the newest published release of its own track:
+
+```bash
+sudo bash update.sh --dry-run   # review the plan
+sudo bash update.sh             # apply it
+```
+
+`--native` or `--custom` limits a run to one track. Pin exact versions with
+`--native-version v6.0.0-2` and `--custom-version v6.0.0-custom-2`; do that for
+change-controlled rollouts so every host gets the same release. Use the `update.sh`
+from the newest archive you are installing.
 
 1. Review the plan. A dry run changes nothing:
 
    ```bash
-   sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-2 --dry-run
+   sudo bash update.sh --dry-run
    ```
 
    The updater finds instances from their systemd units, including alternate
@@ -161,8 +175,8 @@ both versions in one run.
    version if known, listening port, and the reason. Update those copies with
    the tool that installed them.
 
-3. Run the update without `--dry-run`. Offline hosts pass the archives and
-   checksum files explicitly:
+3. Run the update without `--dry-run`. Offline hosts pass explicit versions, and
+   the archives and checksum files:
 
    ```bash
    sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-2 \

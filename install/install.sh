@@ -27,6 +27,39 @@ exporter=prometheus # package default
 version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(custom-)?[1-9][0-9]*)?(-rc\.[1-9][0-9]*)?$'
 # Track follows the version: vX.Y.Z-custom-N is the QDEPTHHI-enhanced build.
 version_track() { [[ $1 == *-custom-* ]] && printf custom || printf native; }
+# Newest stable (non-rc) tag of a track from tag names on stdin. Distribution
+# ordering, not SemVer: vX.Y.Z < vX.Y.Z-1 < vX.Y.Z-2 < vX.Y.(Z+1).
+pick_latest() {
+  local track=$1 tag best='' best_key='' key rev upstream a b c
+  while IFS= read -r tag; do
+    [[ $tag =~ $version_pattern && $tag != *-rc.* && $(version_track "$tag") == "$track" ]] || continue
+    rev=0; [[ $tag =~ -([1-9][0-9]*)$ ]] && rev=${BASH_REMATCH[1]}
+    upstream=${tag#v}; upstream=${upstream%%-*}
+    IFS=. read -r a b c <<< "$upstream"
+    key=$(printf '%09d%09d%09d%09d' "$a" "$b" "$c" "$rev")
+    if [[ -z $best || $key > $best_key ]]; then best=$tag best_key=$key; fi
+  done
+  [[ -n $best ]] || return 1
+  printf '%s\n' "$best"
+}
+# Published, non-prerelease release tags, newest pages first; drafts are never listed.
+release_tags() {
+  local page body
+  for page in 1 2 3 4 5 6 7 8 9 10; do
+    body=$(system_tool curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 20 --max-time 60 \
+      -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/rknightion/mq-exporter-dist/releases?per_page=100&page=$page") || return 1
+    # Targets have no JSON parser. tag_name precedes prerelease in each release object and
+    # nested objects carry neither key; a misparse fails closed or picks a tag that must
+    # still match the grammar and pass checksum verification.
+    awk '/^ *"tag_name": *"/ {t=$0; sub(/^ *"tag_name": *"/, "", t); sub(/".*/, "", t)} /^ *"prerelease": *false/ && t != "" {print t; t=""} /^ *"prerelease": *true/ {t=""}' <<< "$body"
+    grep -q '"tag_name"' <<< "$body" || break
+  done
+}
+latest_release() {
+  local tags
+  tags=$(release_tags) || die 'cannot list releases; pass --version'
+  pick_latest "$1" <<< "$tags" || die "no published $1 release found; pass --version"
+}
 select_exporter() {
   case "$exporter:$variant" in
     prometheus:native) binary=mq_prometheus; prefix='mq-exporter-dist';;
@@ -57,6 +90,10 @@ verify_archive() (
   done < "$scratch/names"
   while IFS= read -r entry; do [[ ${entry:0:1} == - ]] || die 'archive links and special files forbidden'; done < "$scratch/types"
 )
+if [[ ${1:-} == --pick-latest ]]; then
+  (($#==2)) || die '--pick-latest native|custom (tag names on stdin)'
+  pick_latest "$2"; exit
+fi
 if [[ ${1:-} == --verify-archive ]]; then
   (($#==4 || $#==5)) || die '--verify-archive ARCHIVE CHECKSUMS VERSION [prometheus|otel]'
   exporter=${5:-$exporter}; variant=$(version_track "$4"); select_exporter
@@ -72,9 +109,10 @@ usage() {
     '  [--exporter prometheus|otel] [--otlp-endpoint https://otel.example.com:4318] [--otlp-insecure]' \
     '  [--mode bindings|client --channel NAME --conn-name mq.example.com(1414)]' \
     '  [--ccdt URL] [--user MQUSER --password-file FILE]' \
-    '  [--variant native|custom] [--change-variant] [--allow-downgrade]' \
+    '  [--custom | --native | --variant native|custom] [--change-variant] [--allow-downgrade]' \
     '  [--replace-config] [--repoint] [--no-start] [--preflight-only] [--list-qmgrs]' \
-    '  vX.Y.Z-N installs the upstream-native build; vX.Y.Z-custom-N the QDEPTHHI-enhanced build'
+    '  vX.Y.Z-N installs the upstream-native build; vX.Y.Z-custom-N the QDEPTHHI-enhanced build.' \
+    '  Without --version, the newest published release of the chosen variant is downloaded.'
 }
 version='' instance='' qmgr='' account='' archive='' checksums='' mq=/opt/mqm root=/opt/mq-exporter
 port=9157 queues='APP.*,!SYSTEM.*,!AMQ.*' channels='*' mode=bindings channel='' conn='' ccdt='' user='' password=''
@@ -91,20 +129,28 @@ while (($#)); do
     --change-variant) change_variant=1; shift; continue;;
     --allow-downgrade) allow_downgrade=1; shift; continue;;
     --preflight-only) preflight_only=1; shift; continue;;
+    --custom|--native)
+      [[ -z $variant || $variant == "${1#--}" ]] || die 'choose one of --custom and --native'
+      variant=${1#--}; shift; continue;;
   esac
   (($# >= 2)) || die 'option requires a value'
   case "$1" in
     --version) version=$2;; --instance) instance=$2;; --qmgr) qmgr=$2;; --service-user) account=$2;;
     --archive) archive=$2;; --checksums) checksums=$2;; --mq-path) mq=$2;; --root) root=$2;;
     --port) port=$2;; --queues) queues=$2;; --channels) channels=$2;; --mode) mode=$2;;
-    --exporter) exporter=$2;; --otlp-endpoint) endpoint=$2;; --variant) variant=$2;;
+    --exporter) exporter=$2;; --otlp-endpoint) endpoint=$2;; --variant) [[ -z $variant || $variant == "$2" ]] || die 'conflicting variant options'; variant=$2;;
     --channel) channel=$2;; --conn-name) conn=$2;; --ccdt) ccdt=$2;; --user) user=$2;; --password-file) password=$2;;
     *) die 'unknown option';;
   esac
   shift 2
 done
 if ((list)); then exec "$mq/bin/dspmq" -o installation; fi
-[[ $version =~ $version_pattern ]] || die 'explicit version required'
+if [[ -z $version ]]; then
+  [[ -z $archive ]] || die 'offline installation requires an explicit --version'
+  version=$(latest_release "${variant:-native}")
+  printf 'Latest published %s release: %s\n' "${variant:-native}" "$version"
+fi
+[[ $version =~ $version_pattern ]] || die 'invalid version'
 track=$(version_track "$version")
 [[ -z $variant || $variant == "$track" ]] || die "variant $variant does not match version $version; use a vX.Y.Z-custom-N version for the custom variant"
 variant=$track

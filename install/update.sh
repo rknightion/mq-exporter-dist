@@ -9,16 +9,50 @@ system_tool() { LD_LIBRARY_PATH=/usr/lib64:/lib64 "$@"; }
 selinux_active() { [[ -e /sys/fs/selinux/enforce ]]; }
 version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(custom-)?[1-9][0-9]*)?(-rc\.[1-9][0-9]*)?$'
 version_track() { [[ $1 == *-custom-* ]] && printf custom || printf native; }
+# Newest stable (non-rc) tag of a track from tag names on stdin. Distribution
+# ordering, not SemVer: vX.Y.Z < vX.Y.Z-1 < vX.Y.Z-2 < vX.Y.(Z+1).
+pick_latest() {
+  local track=$1 tag best='' best_key='' key rev upstream a b c
+  while IFS= read -r tag; do
+    [[ $tag =~ $version_pattern && $tag != *-rc.* && $(version_track "$tag") == "$track" ]] || continue
+    rev=0; [[ $tag =~ -([1-9][0-9]*)$ ]] && rev=${BASH_REMATCH[1]}
+    upstream=${tag#v}; upstream=${upstream%%-*}
+    IFS=. read -r a b c <<< "$upstream"
+    key=$(printf '%09d%09d%09d%09d' "$a" "$b" "$c" "$rev")
+    if [[ -z $best || $key > $best_key ]]; then best=$tag best_key=$key; fi
+  done
+  [[ -n $best ]] || return 1
+  printf '%s\n' "$best"
+}
+# Published, non-prerelease release tags, newest pages first; drafts are never listed.
+release_tags() {
+  local page body
+  for page in 1 2 3 4 5 6 7 8 9 10; do
+    body=$(system_tool curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 20 --max-time 60 \
+      -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/rknightion/mq-exporter-dist/releases?per_page=100&page=$page") || return 1
+    # Targets have no JSON parser. tag_name precedes prerelease in each release object and
+    # nested objects carry neither key; a misparse fails closed or picks a tag that must
+    # still match the grammar and pass checksum verification.
+    awk '/^ *"tag_name": *"/ {t=$0; sub(/^ *"tag_name": *"/, "", t); sub(/".*/, "", t)} /^ *"prerelease": *false/ && t != "" {print t; t=""} /^ *"prerelease": *true/ {t=""}' <<< "$body"
+    grep -q '"tag_name"' <<< "$body" || break
+  done
+}
+if [[ ${1:-} == --pick-latest ]]; then
+  (($#==2)) || die '--pick-latest native|custom (tag names on stdin)'
+  pick_latest "$2"; exit
+fi
 usage() {
-  printf '%s\n' 'update.sh [--native-version vX.Y.Z-N] [--custom-version vX.Y.Z-custom-N]' \
+  printf '%s\n' 'update.sh [--native] [--custom] [--native-version vX.Y.Z-N] [--custom-version vX.Y.Z-custom-N]' \
     '  [--native-archive FILE --native-checksums FILE] [--otel-archive FILE --otel-checksums FILE]' \
     '  [--custom-archive FILE --custom-checksums FILE]' \
     '  [--root DIR]... [--instance NAME]... [--dry-run] [--verify health|active]' \
     '  [--health-timeout SECONDS] [--settle SECONDS] [--allow-downgrade] [--include-unhealthy]' \
     '  Each instance keeps its variant and follows its own track: native Prometheus and' \
-    '  OTel instances follow --native-version, custom instances --custom-version.'
+    '  OTel instances follow --native-version, custom instances --custom-version.' \
+    '  With no track options, both tracks update to their newest published release;' \
+    '  --native or --custom limits the run to one track. Offline runs need explicit versions.'
 }
-native_version='' custom_version=''
+native_version='' custom_version='' want_native=0 want_custom=0
 declare -A archive_arg=() checksums_arg=()
 roots=(/opt/mq-exporter) only=() dry_run=0 verify=health health_timeout=120 settle=20
 allow_downgrade=0 include_unhealthy=0
@@ -28,6 +62,8 @@ while (($#)); do
     --dry-run) dry_run=1; shift; continue;;
     --allow-downgrade) allow_downgrade=1; shift; continue;;
     --include-unhealthy) include_unhealthy=1; shift; continue;;
+    --native) want_native=1; shift; continue;;
+    --custom) want_custom=1; shift; continue;;
   esac
   (($# >= 2)) || die 'option requires a value'
   case "$1" in
@@ -41,7 +77,24 @@ while (($#)); do
   esac
   shift 2
 done
-[[ -n $native_version || -n $custom_version ]] || die 'at least one of --native-version or --custom-version required'
+# Tracks: explicit versions and --native/--custom select them; nothing selected means both.
+implicit=0
+[[ -z $native_version ]] || want_native=1
+[[ -z $custom_version ]] || want_custom=1
+if ((!want_native && !want_custom)); then want_native=1 want_custom=1 implicit=1; fi
+if { ((want_native)) && [[ -z $native_version ]]; } || { ((want_custom)) && [[ -z $custom_version ]]; }; then
+  [[ -z ${archive_arg[prometheus]:-}${archive_arg[otel]:-}${archive_arg[custom]:-} ]] || die 'offline updates need explicit --native-version / --custom-version'
+  tags=$(release_tags) || die 'cannot list releases; pass explicit versions'
+  for t in native custom; do
+    var=${t}_version want=want_$t
+    ((${!want})) && [[ -z ${!var} ]] || continue
+    if latest=$(pick_latest "$t" <<< "$tags"); then
+      printf -v "$var" '%s' "$latest"; printf 'Latest published %s release: %s\n' "$t" "$latest"
+    elif ((implicit)); then printf 'No published %s release; %s instances are not updated.\n' "$t" "$t"
+    else die "no published $t release found"; fi
+  done
+fi
+[[ -n $native_version || -n $custom_version ]] || die 'nothing to update'
 if [[ -n $native_version ]]; then
   [[ $native_version =~ $version_pattern && $(version_track "$native_version") == native ]] || die 'invalid native version'
 fi

@@ -42,15 +42,17 @@ not use it work unchanged on either build.
 
 ## Install
 
-Use the Linux installer from the custom archive with a custom version:
+Add `--custom` to the Linux installer command. Without `--version`, it downloads
+the newest published custom release:
 
 ```bash
-sudo bash install.sh --version v6.0.0-custom-1 \
+sudo bash install.sh --custom \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
 
-The version selects the variant. `--variant custom` may be given explicitly and
-must agree with the version. To switch an existing instance between variants,
+To pin a release, pass `--version v6.0.0-custom-1` instead of, or as well as,
+`--custom`. The version determines the variant, and a conflicting `--custom` or
+`--native` is refused. Offline installation always needs an explicit version. To switch an existing instance between variants,
 add `--change-variant`. The installer keeps the other variant's binary in place
 and points the service at the new one. Configuration and identity are preserved
 as for any update.
