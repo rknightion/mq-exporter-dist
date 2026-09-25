@@ -20,14 +20,17 @@ Go, Git, a compiler, MQ SDK headers or access to Go module registries on that se
 
 Each download contains one exporter and its installation tools. You do not need
 both packages. Both use unchanged IBM upstream source at `v6.0.0`; distribution
-versions are separate from IBM's exporter version.
+versions are separate from IBM's exporter version. The optional
+[custom build](docs/custom.md) adds one reviewed patch on a separate release track.
 
-## Install v6.0.0
+## Install
 
-**Platform support remains provisional.** The
-[v6.0.0 release](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0)
-provides separate Prometheus and OpenTelemetry packages for Linux and Windows,
-plus signed Prometheus and OpenTelemetry RPMs.
+**Platform support remains provisional.** Current releases are
+[v6.0.0-1](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0-1), with
+separate Prometheus and OpenTelemetry packages for Linux and Windows, and
+[v6.0.0-custom-1](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0-custom-1),
+a Linux Prometheus build that adds a per-queue [QDEPTHHI gauge](docs/custom.md).
+Signed v6.0.0 RPMs remain current.
 
 1. Check the [platform requirements](docs/compatibility.md) and your installed MQ runtime.
 2. Follow the [Linux installation guide](docs/linux.md) or [Windows installation guide](docs/windows.md).
@@ -35,7 +38,9 @@ plus signed Prometheus and OpenTelemetry RPMs.
 
 Installers support online and offline installation. They preserve existing
 configuration by default and do not create MQ objects or change MQ permissions,
-MAXHANDS, firewall rules or TLS policy.
+MAXHANDS, firewall rules or TLS policy. On Linux, `update.sh` updates every
+managed instance on a host in one run, with a snapshot and automatic rollback
+per instance.
 
 ## Requirements
 

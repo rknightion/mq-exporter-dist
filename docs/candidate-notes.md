@@ -14,7 +14,8 @@ with an existing IBM MQ 9.3.0.27 runtime; Windows Server 2019 amd64, with its MQ
 runtime version independently confirmed. Platform support remains provisional.
 
 Archives contain precompiled executables, installers, notices, SBOM and build
-metadata. IBM MQ SDK/runtime libraries are not included. SHA256SUMS and GitHub
+metadata. Linux archives also include `update.sh`, which updates every managed
+instance on a host with per-instance snapshots and rollback. IBM MQ SDK/runtime libraries are not included. SHA256SUMS and GitHub
 provenance cover these archive bytes. Review the compatibility matrix and
 per-artifact metadata before use. Native RHEL and Server 2019 lifecycle checks
 and live MQ 9.3.0.35 trial checks are described in the

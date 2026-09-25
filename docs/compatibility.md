@@ -52,6 +52,41 @@ Coverage includes preserved configuration and executable backups, rejected
 checksum and identity changes, independent instances, stop/start, automatic
 startup after reboot, and service removal without deleting configuration.
 
+## v6.0.0-1 and v6.0.0-custom-1
+
+These releases have the same upstream source and exporter binaries as v6.0.0,
+plus the custom track. Their Linux candidates passed these checks on a
+native RHEL 9.6 host (kernel `5.14.0-570.132.1.el9_6`, glibc 2.34, SELinux enforcing),
+with a native MQ 9.3.0.35 trial server and two queue managers. The exporters used
+the MQ 9.3.0.27 redistributable client in client mode, authenticating with a
+password on one queue manager:
+
+- **QDEPTHHI gauge.** For every monitored local queue, `ibmmq_queue_attribute_depth_high_limit`
+  equalled `DISPLAY QLOCAL QDEPTHHI` exactly, in both directions. This covered values
+  of 0, 35, 80, 90 and 100, both queue-pattern forms, and an alias queue that produced
+  no sample. `ALTER`, `DEFINE` and `DELETE QLOCAL` were reflected after rediscovery,
+  with no stale samples. Upstream-native builds emitted no custom gauge.
+- **Multiple instances.** Six simultaneous instances ran on separate ports under
+  two installation roots, including a custom root with an administrator SELinux file-context
+  mapping and client-data unit drop-ins. The mix was native and custom Prometheus
+  instances plus one OTel instance.
+- **Updater.** Tested with real systemd:
+  - dry-run inventory;
+  - a v6.0.0 install without release records (named by its published hash);
+  - an unmanaged exporter process (reported with version and listening port);
+  - successive updates of every instance, preserving configuration edits,
+    identity, ports, ownership, SELinux labels, drop-ins and enablement;
+  - an injected mid-update failure that rolled back cleanly and stopped;
+  - an idempotent rerun, and a new `install.sh --custom` instance.
+- **Reboot.** After a host reboot with MQ not yet started, every instance retried
+  and recovered on its own once the queue managers started.
+
+The Windows archives in v6.0.0-1 carry exporter, configuration-checker and
+service-wrapper executables byte-identical to v6.0.0. `mq-dist.exe` and
+`install.ps1` changed: new helper commands and the release grammar. They passed
+build-host runtime checks but were **not retested on native Server 2019**. RPMs
+are unchanged; v6.0.0 RPMs remain current.
+
 ## Live MQ coverage and remaining limits
 
 The `v6.0.0-rc.1` Linux RPMs and Windows archives passed these checks on the

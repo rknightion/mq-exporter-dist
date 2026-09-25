@@ -27,7 +27,8 @@ ibmmq_queue_attribute_depth_high_limit{qmgr="QM1",queue="APP.ORDERS", ...} 80
 - The value is `QDEPTHHI`, a percentage of the queue's `MAXDEPTH` (0 to 100),
   as shown by `DISPLAY QLOCAL(APP.ORDERS) QDEPTHHI`.
 - Labels match `ibmmq_queue_attribute_max_depth`, including `qmgr` and `queue`.
-- A value of `0` is a real setting and is exported. A queue whose definition
+- A value of `0` is a real setting and is exported. MQ accepts `QDEPTHHI(0)` only with
+  `QDEPTHLO(0)`, because QDEPTHHI may not be lower than QDEPTHLO. A queue whose definition
   returned no `QDEPTHHI` gets no sample, never a placeholder zero.
 - Only local queues matched by the exporter's queue patterns are covered. Queue
   attributes are read during queue discovery, so wildcard patterns (the installer
