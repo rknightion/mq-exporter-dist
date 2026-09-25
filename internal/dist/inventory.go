@@ -108,10 +108,19 @@ func (s Scanner) version(dir, binary, sum string) string {
 			}
 		}
 	}
+	// Revisions can ship byte-identical exporters; name the oldest match so an
+	// ambiguous install is updated rather than skipped as current.
+	oldest := ""
 	for _, k := range s.Known {
-		if k.Platform == "linux-amd64" && sum != "" && k.Payload[binary] == sum {
-			return k.Tag
+		if k.Platform != "linux-amd64" || sum == "" || k.Payload[binary] != sum {
+			continue
 		}
+		if c, e := CompareVersions(k.Tag, oldest); oldest == "" || (e == nil && c < 0) {
+			oldest = k.Tag
+		}
+	}
+	if oldest != "" {
+		return oldest
 	}
 	return "unrecorded"
 }

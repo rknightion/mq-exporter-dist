@@ -83,7 +83,9 @@ func TestInventoryManagedInstancesAcrossRoots(t *testing.T) {
 	h.instance("/opt/mq-exporter", "qm1", "mq_prometheus", "", "")
 	h.instance("/opt/mq exporter", "qm2", "mq_prometheus_custom", "custom", "v6.0.0-custom-1\nprometheus\ncustom\nmq_prometheus_custom\n"+sumOf("binary-qm2")+"\n")
 	h.instance("/srv/mqx", "qm3", "mq_otel", "native", "v6.0.0-1\notel\nnative\nmq_otel\n"+strings.Repeat("0", 64)+"\n")
-	known := []KnownRelease{{Tag: "v6.0.0", Exporter: "prometheus", Variant: "native", Platform: "linux-amd64", Payload: map[string]string{"mq_prometheus": sumOf("binary-qm1")}}}
+	same := map[string]string{"mq_prometheus": sumOf("binary-qm1")}
+	known := []KnownRelease{{Tag: "v6.0.0-1", Exporter: "prometheus", Variant: "native", Platform: "linux-amd64", Payload: same},
+		{Tag: "v6.0.0", Exporter: "prometheus", Variant: "native", Platform: "linux-amd64", Payload: same}}
 	inv := scan(t, h, nil, known)
 	if len(inv.Instances) != 3 || len(inv.Unmanaged) != 0 {
 		t.Fatalf("unexpected inventory: %+v", inv)

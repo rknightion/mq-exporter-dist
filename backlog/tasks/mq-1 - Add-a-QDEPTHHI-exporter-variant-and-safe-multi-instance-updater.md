@@ -1,11 +1,11 @@
 ---
 id: MQ-1
 title: Add a QDEPTHHI exporter variant and safe multi-instance updater
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 09:18'
-updated_date: '2026-09-25 10:00'
+updated_date: '2026-09-25 14:06'
 labels: []
 dependencies: []
 references:
@@ -28,13 +28,19 @@ Recreate the disposable AWS IBM MQ lab for end-to-end validation. Compare MQSC D
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The build produces separately named upstream-native and QDEPTHHI-enhanced Prometheus binaries from the same pinned upstream revision, with variant and source/patch provenance in release metadata and checksums; existing OTel artifacts continue to build. The native binary remains free of the custom metric.
-- [ ] #2 The enhanced exporter emits a documented, stable QDEPTHHI gauge with queue-manager and queue identity for each eligible local queue. It distinguishes an unavailable attribute from a legitimate zero, handles queue discovery/attribute changes, and has focused regression tests for parsing and emission.
-- [ ] #3 Archives and installer expose an explicit variant choice without silently changing existing installs. Version/checksum verification, service-account permissions, config preservation and current install/rollback behavior remain intact. Update repo policy and user docs to describe both variants and their upstream relationship.
-- [ ] #4 A Linux update command inventories all managed exporter instances, including separate ports and supported alternate roots, and reports current and target versions/variants before changes. Dry-run is available. Discovery uses managed instance identity/service metadata and never blindly overwrites arbitrary same-named binaries.
-- [ ] #5 The updater preflights all target instances, updates them serially with staged verified binaries and per-instance backups, preserves each config, identity, port and service definition, and coordinates stop/start or restart deliberately. It verifies each instance after replacement, rolls back a failed instance and reports partial success accurately. Untrusted paths and symlinks cannot redirect writes.
-- [ ] #6 Automated tests cover multiple installed instances, mixed starting versions/variants, alternate roots, dry-run, preflight failure, successful update and rollback without losing configuration; installer/updater documentation includes an operator procedure and recovery steps.
-- [ ] #7 A recreated AWS lab runs real IBM MQ with at least two simultaneous exporter instances on different ports. MQSC QDEPTHHI values for local queues match the enhanced binaries raw /metrics output after install and after update; the upstream-native binary is checked separately. Capture exact build/release identity and live scrape evidence, then tear down lab resources.
-- [ ] #8 Document how the new metric can be retained by downstream scrape filtering and joined to queue-age metrics for per-queue alert policy selection, without embedding a customer-specific threshold mapping in this public repository.
-- [ ] #9 The inventory also identifies running exporter services or known install paths outside the managed layout and reports their binary path, version, port and reason they cannot be updated automatically; it never silently claims these copies were upgraded.
+- [x] #1 The build produces separately named upstream-native and QDEPTHHI-enhanced Prometheus binaries from the same pinned upstream revision, with variant and source/patch provenance in release metadata and checksums; existing OTel artifacts continue to build. The native binary remains free of the custom metric.
+- [x] #2 The enhanced exporter emits a documented, stable QDEPTHHI gauge with queue-manager and queue identity for each eligible local queue. It distinguishes an unavailable attribute from a legitimate zero, handles queue discovery/attribute changes, and has focused regression tests for parsing and emission.
+- [x] #3 Archives and installer expose an explicit variant choice without silently changing existing installs. Version/checksum verification, service-account permissions, config preservation and current install/rollback behavior remain intact. Update repo policy and user docs to describe both variants and their upstream relationship.
+- [x] #4 A Linux update command inventories all managed exporter instances, including separate ports and supported alternate roots, and reports current and target versions/variants before changes. Dry-run is available. Discovery uses managed instance identity/service metadata and never blindly overwrites arbitrary same-named binaries.
+- [x] #5 The updater preflights all target instances, updates them serially with staged verified binaries and per-instance backups, preserves each config, identity, port and service definition, and coordinates stop/start or restart deliberately. It verifies each instance after replacement, rolls back a failed instance and reports partial success accurately. Untrusted paths and symlinks cannot redirect writes.
+- [x] #6 Automated tests cover multiple installed instances, mixed starting versions/variants, alternate roots, dry-run, preflight failure, successful update and rollback without losing configuration; installer/updater documentation includes an operator procedure and recovery steps.
+- [x] #7 A recreated AWS lab runs real IBM MQ with at least two simultaneous exporter instances on different ports. MQSC QDEPTHHI values for local queues match the enhanced binaries raw /metrics output after install and after update; the upstream-native binary is checked separately. Capture exact build/release identity and live scrape evidence, then tear down lab resources.
+- [x] #8 Document how the new metric can be retained by downstream scrape filtering and joined to queue-age metrics for per-queue alert policy selection, without embedding a customer-specific threshold mapping in this public repository.
+- [x] #9 The inventory also identifies running exporter services or known install paths outside the managed layout and reports their binary path, version, port and reason they cannot be updated automatically; it never silently claims these copies were upgraded.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Published v6.0.0-1 (native, Latest), v6.0.0-custom-1 and v6.0.0-custom-2 (custom, not latest). Tracks: vX.Y.Z-N / vX.Y.Z-custom-N (build/versions.py, tests/version-vectors.json). Custom = build/patches/qdepthhi.patch -> ibmmq_queue_attribute_depth_high_limit, with an in-container regression test proven to fail without the guard. install.sh --custom/--native, release/variant records, host lock, --preflight-only; update.sh inventories managed and unmanaged exporters, snapshots, verifies new PID/exe/health, rolls back and handles signals; update.sh with no args updates to the newest release of each build, --custom/--native switch builds. Container test covers 11 updater scenarios. Live lab on RHEL 9.6 + MQ 9.3.0.35 with the 9.3.0.27 client passed install, rediscovery, updates, fault rollback, reboot, switching, and online updates of the published releases. The published payloads are byte-identical to the lab-tested candidates. Lab torn down and verified. Windows install.ps1/mq-dist.exe not natively retested (approved; MQ-4). Follow-ups MQ-2..MQ-5.
+<!-- SECTION:NOTES:END -->

@@ -4,6 +4,7 @@ title: Reconcile linux build image digest with recorded build input
 status: To Do
 assignee: []
 created_date: '2026-09-25 10:12'
+updated_date: '2026-09-25 13:35'
 labels: []
 dependencies: []
 ordinal: 2000
@@ -17,5 +18,7 @@ build/linux.Dockerfile pins registry.access.redhat.com/ubi8/ubi@sha256:45efff7..
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 build/inputs.json linux_image equals the Dockerfile FROM digest,A check in just check fails when they diverge,Renovate updates both together
+- [ ] #1 build/inputs.json linux_image equals the Dockerfile FROM digest
+- [ ] #2 A check in just check fails when they diverge
+- [ ] #3 Renovate updates both together
 <!-- AC:END -->

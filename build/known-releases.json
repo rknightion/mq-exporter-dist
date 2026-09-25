@@ -64,5 +64,111 @@
     "platform": "windows-amd64",
     "tag": "v6.0.0",
     "variant": "native"
+  },
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "8bc4305ffd983290e67227a6d31a74b596327d905c6c4d2cf9a5ee6edeb9218d",
+      "known-releases.json": "055dbebf60b277dc76470a3ff4b6927153c1276b08af32d854ba0685086aafc6",
+      "mq-config-check": "e211360fdcb85786a8e7186e8e565239f22afd15094deff04965ba9d4a6d2ed5",
+      "mq-dist": "50e454f3871365d4f9b5e8338cd37438e43002613976228521aa001f6ee8761a",
+      "mq_prometheus": "cd27a612f677bdb6fad7700c1f6e6290a98d463a3d48af0cbc47f97277d228d7",
+      "sbom.cdx.json": "80b1848f961524ed22ba3d3409d9bcb659a5e1069553fa8ab59fc7f442fa8549",
+      "update.sh": "f1ee39de9b7b943b87af7bcd03cadf480f5a33c6fcacffc982ab8277c493ae4d"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0-1",
+    "variant": "native"
+  },
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "05f0a2ca24e782c519c30f5e321de85cfe2063e9c6435cac06750705eea0f283",
+      "diagnose.ps1": "5bcc91e117a83e14354326e4d2c5556be6ec59d1bb5d95ee6aaef41002b96677",
+      "install.ps1": "46ab0926d3a86478673f30092e37e91f6ca4f7549d39e5c86ad15b7765b0ee49",
+      "mq-config-check.exe": "00810f0ac4429366c7dc26a0179270a92c312da310465d4734ef648d4be0ab25",
+      "mq-dist.exe": "c7612791fae86e2c835c6a7a13b434b46af06e642072d5c98482a1882a0b0454",
+      "mq-service.exe": "85b1ddbe186ae429439f5dc856257e14c2459e7186b0072a0f2bcdae486871f4",
+      "mq_prometheus.exe": "f93818f066ff1527e751e2f763bf054a28ca3ea12e3a5430109e1cab5c258b7e",
+      "sbom.cdx.json": "4d7608b34fad5171f682fef3c60748ddafb7d6d6a6a52e413813ed33d9552609"
+    },
+    "platform": "windows-amd64",
+    "tag": "v6.0.0-1",
+    "variant": "native"
+  },
+  {
+    "exporter": "otel",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "eba20ddd206adeec41afd86cc052787ff420ca5cf5b76b374542c3e0882b4a3a",
+      "known-releases.json": "055dbebf60b277dc76470a3ff4b6927153c1276b08af32d854ba0685086aafc6",
+      "mq-config-check": "e4c0741cf439472fb24565b6d593c2fe7593a35eeb9281a2e392d6774b8f782c",
+      "mq-dist": "50e454f3871365d4f9b5e8338cd37438e43002613976228521aa001f6ee8761a",
+      "mq_otel": "5f30006adac3301945540d759a76e6ca68b69a6deda403c618eb42ce52484762",
+      "sbom.cdx.json": "64ee0ec34c8bf1fc511b128779b3d2dc67371431fd824edeefdf6ab8759df8fe",
+      "update.sh": "f1ee39de9b7b943b87af7bcd03cadf480f5a33c6fcacffc982ab8277c493ae4d"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0-1",
+    "variant": "native"
+  },
+  {
+    "exporter": "otel",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "05f0a2ca24e782c519c30f5e321de85cfe2063e9c6435cac06750705eea0f283",
+      "diagnose.ps1": "5bcc91e117a83e14354326e4d2c5556be6ec59d1bb5d95ee6aaef41002b96677",
+      "install.ps1": "0df265c828a2e12ee19d804c55a0623fe49aac187f5d54407b7b1b7630a42346",
+      "mq-config-check.exe": "7722c58812852e02f22c7b8472471921a72b634d4fe44e41613bdbc830ce1124",
+      "mq-dist.exe": "c7612791fae86e2c835c6a7a13b434b46af06e642072d5c98482a1882a0b0454",
+      "mq-service.exe": "85b1ddbe186ae429439f5dc856257e14c2459e7186b0072a0f2bcdae486871f4",
+      "mq_otel.exe": "ff833bd478431492cb8585fc83b1d1510483a2291e4cdd355f7ed1c902835d72",
+      "sbom.cdx.json": "c060789e11e688eb8cacee08749e3b10d4ae5a3a6cd1ec66b97a37a726a9bb79"
+    },
+    "platform": "windows-amd64",
+    "tag": "v6.0.0-1",
+    "variant": "native"
+  },
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "8bc4305ffd983290e67227a6d31a74b596327d905c6c4d2cf9a5ee6edeb9218d",
+      "known-releases.json": "055dbebf60b277dc76470a3ff4b6927153c1276b08af32d854ba0685086aafc6",
+      "mq-config-check": "c6b7c7ca7f654ace873fbae2b284847a0626b0c5ca71e45ea5394eecec954dff",
+      "mq-dist": "50e454f3871365d4f9b5e8338cd37438e43002613976228521aa001f6ee8761a",
+      "mq_prometheus_custom": "78e52ccdb18c7a50f99bdd43314f8f5d61b18fa7d862f2a9962ba0c66b2256b5",
+      "sbom.cdx.json": "17b37df8c12094eec37d7e40af0a313526ad14f5055d2c218cd76600046953aa",
+      "update.sh": "f1ee39de9b7b943b87af7bcd03cadf480f5a33c6fcacffc982ab8277c493ae4d"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0-custom-2",
+    "variant": "custom"
+  },
+  {
+    "exporter": "prometheus",
+    "payload_sha256": {
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "THIRD-PARTY-NOTICES.txt": "8813bad3f2ab6649f45f5571a581fb6f041611101af8c06627dda985d7e86d90",
+      "diagnose.sh": "7e3e37116eaac58125a2c8a1882c4b5413d2e6349094d749218a965f2063ae14",
+      "install.sh": "8bc4305ffd983290e67227a6d31a74b596327d905c6c4d2cf9a5ee6edeb9218d",
+      "known-releases.json": "055dbebf60b277dc76470a3ff4b6927153c1276b08af32d854ba0685086aafc6",
+      "mq-config-check": "c6b7c7ca7f654ace873fbae2b284847a0626b0c5ca71e45ea5394eecec954dff",
+      "mq-dist": "50e454f3871365d4f9b5e8338cd37438e43002613976228521aa001f6ee8761a",
+      "mq_prometheus_custom": "78e52ccdb18c7a50f99bdd43314f8f5d61b18fa7d862f2a9962ba0c66b2256b5",
+      "sbom.cdx.json": "3dd1e24e6e7bd611ff9fd0b1a9b702aa42a95702c9ac1b739b3ecae9e1c699a4",
+      "update.sh": "c939acd400b57b234bb59b3be512367edf8ac3330b25ec3a6cb47dc9f47b5243"
+    },
+    "platform": "linux-amd64",
+    "tag": "v6.0.0-custom-1",
+    "variant": "custom"
   }
 ]
