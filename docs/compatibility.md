@@ -52,7 +52,7 @@ Coverage includes preserved configuration and executable backups, rejected
 checksum and identity changes, independent instances, stop/start, automatic
 startup after reboot, and service removal without deleting configuration.
 
-## v6.0.0-1 and v6.0.0-custom-1
+## v6.0.0-1, v6.0.0-custom-1 and v6.0.0-custom-2
 
 These releases have the same upstream source and exporter binaries as v6.0.0,
 plus the custom track. Their Linux candidates passed these checks on a
@@ -78,6 +78,11 @@ password on one queue manager:
     identity, ports, ownership, SELinux labels, drop-ins and enablement;
   - an injected mid-update failure that rolled back cleanly and stopped;
   - an idempotent rerun, and a new `install.sh --custom` instance.
+- **Variant switching** (v6.0.0-1 and v6.0.0-custom-2 updaters). `update.sh --custom`
+  moved native instances to the custom build, and `update.sh --native` moved every
+  Prometheus instance back. Each switched instance ran the other binary, matched
+  MQSC (custom) or emitted no custom gauge (native), and kept its configuration.
+  v6.0.0-custom-1's updater keeps each instance on its own build.
 - **Reboot.** After a host reboot with MQ not yet started, every instance retried
   and recovered on its own once the queue managers started.
 

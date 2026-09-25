@@ -28,7 +28,7 @@ versions are separate from IBM's exporter version. The optional
 **Platform support remains provisional.** Current releases are
 [v6.0.0-1](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0-1), with
 separate Prometheus and OpenTelemetry packages for Linux and Windows, and
-[v6.0.0-custom-1](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0-custom-1),
+[v6.0.0-custom-2](https://github.com/rknightion/mq-exporter-dist/releases/tag/v6.0.0-custom-2),
 a Linux Prometheus build that adds a per-queue [QDEPTHHI gauge](docs/custom.md).
 Signed v6.0.0 RPMs remain current.
 
@@ -40,7 +40,7 @@ Installers support online and offline installation. They preserve existing
 configuration by default and do not create MQ objects or change MQ permissions,
 MAXHANDS, firewall rules or TLS policy. On Linux, `update.sh` updates every
 managed instance on a host in one run, with a snapshot and automatic rollback
-per instance.
+per instance, and `update.sh --custom` / `--native` switches instances between builds.
 
 ## Requirements
 
