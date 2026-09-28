@@ -36,3 +36,6 @@ __pycache__/
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# loop-pi (pi-subagents writes .pi/subagents/)
+.pi/
