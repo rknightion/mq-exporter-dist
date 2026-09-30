@@ -23,6 +23,10 @@ and live MQ 9.3.0.35 trial checks are described in the
 Exact MQ 9.3.0.27 server/local-bindings acceptance remains outstanding.
 The Linux installer version gate accepts 9.3.0 and newer; this release has no
 additional native MQ runtime acceptance beyond the compatibility guide.
+v6.0.0-2 retains the executables and other unchanged payloads from v6.0.0-1.
+Its Linux installer and versioned metadata/SBOM are revised; the Windows archives
+change only versioned metadata/SBOM. These revised archives were not natively
+retested on RHEL or Windows Server.
 Build metadata records build-time checks, not
 subsequent native validation.
 

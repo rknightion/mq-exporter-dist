@@ -4,7 +4,7 @@ title: Accept IBM MQ 9.3.0 and later in Linux archive installer
 status: In Progress
 assignee: []
 created_date: '2026-09-30 08:24'
-updated_date: '2026-09-30 08:52'
+updated_date: '2026-09-30 09:09'
 labels: []
 dependencies: []
 ordinal: 6000
@@ -28,10 +28,14 @@ The shared Linux archive installer rejects servers whose installed MQ runtime is
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Implement and prove the shared version gate with synthetic boundary versions. 2. Update compatibility and release notes without claiming live acceptance. 3. Build and inspect exact native and custom candidates, compare unchanged payload hashes, review, commit and push. 4. Publish both tracks after the required gates and verify release assets.
+
+Revision: Ordinary source builds changed unrelated payload hashes, so package the accepted binaries from v6.0.0-1 and v6.0.0-custom-2 through Candidate release CI. Verify source SHA256SUMS and known-releases per-member hashes, prove the packaged installer, then publish only the exact tested revised archives. Update release links and inventory afterward.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Shared Linux installer version gate now accepts synthetic MQ 9.3.0, 9.3.0.35, 9.4.0.1 and 10.0.0, rejecting 9.2 and malformed input. Disposable EL8 installer integration passed for existing native and custom archives with mocked 9.3.0.35 output; no live MQ connection or native host acceptance was run. The current EL8 repository lacks pinned GCC 8.5.0-28, so the build pin was refreshed to available 8.5.0-29 and the recorded image digest reconciled before release builds.
+
+Ordinary source-build candidate runs 36692527613 (native) and 36692530793 (custom) succeeded at d541a70 but changed unrelated executable hashes, so they will not be published. The archive revision path verifies prior release SHA256SUMS and known-releases per-member hashes, then changes only the Linux installer, versioned SBOM and metadata. Local revised Linux archives passed the packaged-script integration fixture for native Prometheus, native OTel and custom Prometheus with synthetic MQ 9.3.0.35.
 <!-- SECTION:NOTES:END -->

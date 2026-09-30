@@ -124,6 +124,11 @@ public-check:
 release-index:
     python3 build/release_index.py
 
+# Revise an accepted archive without recompiling its exporter or helpers.
+[group('release')]
+revise-archive version source_version platform exporter:
+    python3 build/revise_archive.py {{ quote(version) }} {{ quote(source_version) }} {{ quote(platform) }} {{ quote(exporter) }}
+
 # Export the CI tool versions from this task interface.
 [group('gen')]
 ci-tool-versions:

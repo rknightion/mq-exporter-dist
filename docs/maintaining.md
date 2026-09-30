@@ -62,6 +62,12 @@ are the only expected differences. Also compare unchanged platforms with the las
 accepted release. Add every new Linux release's payload hashes to
 `build/known-releases.json`, so the updater can name installs that predate release records.
 
+For an installer-only revision, set `source_release` in the Candidate release
+workflow to the last accepted tag on the same track. It verifies that release's
+checksum and per-file hashes against `build/known-releases.json`, retains its
+executables and other unchanged payloads, and records the source archive in the
+new metadata. Only the Linux installer, versioned SBOM and build metadata change.
+
 ## Upgrade a dependency
 
 1. Resolve the upstream tag against IBM's remote and pin the exact commit in

@@ -10,6 +10,10 @@ on:
         description: 'Publish archives after successful tests (rc versions are prereleases; false also builds RPMs)'
         type: boolean
         default: false
+      source_release:
+        description: 'Accepted release to revise without recompiling binaries; leave empty for a source build'
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -80,12 +84,22 @@ jobs:
         if: runner.os == 'Linux'
         run: just check
       - name: Build and inspect exact candidate
+        if: inputs.source_release == ''
         shell: bash
         env:
           DIST_VERSION: ${{ inputs.version }}
           DIST_PLATFORM: ${{ matrix.platform }}
           DIST_EXPORTER: ${{ matrix.exporter }}
         run: just "build-$DIST_PLATFORM" "$DIST_VERSION" "$DIST_EXPORTER"
+      - name: Revise accepted archive
+        if: inputs.source_release != ''
+        shell: bash
+        env:
+          DIST_VERSION: ${{ inputs.version }}
+          SOURCE_RELEASE: ${{ inputs.source_release }}
+          DIST_PLATFORM: ${{ matrix.platform }}
+          DIST_EXPORTER: ${{ matrix.exporter }}
+        run: just revise-archive "$DIST_VERSION" "$SOURCE_RELEASE" "$DIST_PLATFORM-amd64" "$DIST_EXPORTER"
       - name: Inspect public payload
         shell: bash
         run: just public-check
