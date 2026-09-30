@@ -192,7 +192,7 @@ for path_role in root mq; do
 done
 [[ -r $mq/lib64/libmqm_r.so ]] || die 'existing 64-bit MQ runtime missing'
 mqversion=$(env LD_LIBRARY_PATH="$mq/lib64:/usr/lib64:/lib64" "$mq/bin/dspmqver" -f 2) || die 'MQ runtime version unavailable'
-[[ $(awk '$1=="Version:" {print $2}' <<< "$mqversion") == 9.3.0.27 ]] || die 'initial Linux runtime target is MQ 9.3.0.27'
+[[ $(awk '$1=="Version:" {print $2}' <<< "$mqversion") =~ ^(9\.([3-9]|[1-9][0-9]+)|[1-9][0-9]+\.[0-9]+)\.[0-9]+(\.[0-9]+)?$ ]] || die 'MQ 9.3.0 or newer required'
 command -v systemctl >/dev/null || die 'systemd required'
 command -v runuser >/dev/null || die 'runuser required'
 if [[ -n $password ]]; then

@@ -27,7 +27,7 @@ investigation; Unix file permissions and systemd sandbox access are separate che
 
 ## Before you install
 
-Check [compatibility](compatibility.md). You need IBM MQ 9.3.0.27, an existing
+Check [compatibility](compatibility.md). The installer accepts IBM MQ 9.3.0 or newer; you need an existing
 dedicated non-root service account with MQ permissions, Bash, systemd,
 coreutils, tar, gzip and util-linux (`flock`, `runuser`). Online downloads also
 need curl. The installer does not install packages or grant MQ permissions.

@@ -7,11 +7,13 @@ candidate; a successful build is not a full server acceptance test.
 
 | Platform | Architecture | Required runtime |
 |---|---|---|
-| RHEL 8.10 | x86-64 | glibc 2.28, IBM MQ 9.3.0.27 |
-| RHEL 9.x | x86-64 | glibc 2.34, IBM MQ 9.3.0.27 |
+| RHEL 8.10 | x86-64 | glibc 2.28, IBM MQ 9.3.0 or newer |
+| RHEL 9.x | x86-64 | glibc 2.34, IBM MQ 9.3.0 or newer |
 | Windows Server 2019, build 17763 | amd64 | Existing 64-bit IBM MQ installation; version and DLL set must be validated |
 
-The Linux archive targets both listed RHEL versions. Other Linux distributions
+The Linux archive installer accepts well-formed MQ runtime versions from 9.3.0
+upward on both listed RHEL versions. This is an installer check, not live
+acceptance of every MQ fix pack or major version. Other Linux distributions
 and Windows Server versions are outside the initial target set.
 
 MQ native libraries are required at runtime. Linux binaries are dynamically
@@ -108,8 +110,9 @@ native hosts listed above:
 
 The signed RPMs passed installation and running-service upgrades on both RHEL
 hosts with SELinux enforcing. Upgrades preserved configuration and did not
-restart running exporter processes. The Linux archive installer still requires
-MQ 9.3.0.27; the RPM tests do not establish that this installer accepts .35.
+restart running exporter processes. The Linux archive installer's 9.3.0-or-newer
+version check is exercised with synthetic version output; the RPM tests do not
+establish archive installation on other MQ runtimes.
 RPM reboot startup and recovery passed on both hosts. RHEL 8 also passed removal
 of both exporters with configuration retained. On RHEL 9, Prometheus exporter
 removal stopped its instances and removed enablement links, but systemd retained

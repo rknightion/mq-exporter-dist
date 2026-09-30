@@ -45,7 +45,7 @@ per instance, and `update.sh --custom` / `--native` switches instances between b
 ## Requirements
 
 Initial targets are Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x /
-glibc 2.34, with IBM MQ 9.3.0.27; and Windows Server 2019 amd64.
+glibc 2.34, with IBM MQ 9.3.0 or newer; and Windows Server 2019 amd64.
 Live MQ 9.3.0.35 lifecycle checks passed in the disposable lab; exact 9.3.0.27
 server local-bindings acceptance remains outstanding. See the compatibility matrix.
 

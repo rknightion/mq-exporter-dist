@@ -21,6 +21,19 @@ binary=mq_$exporter
 extra=(--exporter "$exporter")
 if [[ $exporter == otel ]]; then extra+=(--otlp-endpoint https://otel.example.com:4318); fi
 args=(--version "$version" --archive "$archive" --checksums "$archive.sha256" --service-user mqmon --no-start "${extra[@]}")
+mv /opt/mqm/bin/dspmqver /opt/mqm/bin/dspmqver.original
+cat > /opt/mqm/bin/dspmqver <<'EOF'
+#!/bin/sh
+printf 'Version: %s\n' "$(cat /tmp/test-mq-version)"
+EOF
+chmod 755 /opt/mqm/bin/dspmqver
+printf '9.2.0.99\n' > /tmp/test-mq-version
+if bash /project/install/install.sh "${args[@]}" --instance qm1 --qmgr QM1 --preflight-only > /tmp/runtime-version.log 2>&1; then
+  printf 'MQ 9.2 runtime was accepted\n' >&2; exit 1
+fi
+awk '/MQ 9.3.0 or newer required/ {found=1} END {exit !found}' /tmp/runtime-version.log
+printf '9.3.0.35\n' > /tmp/test-mq-version
+bash /project/install/install.sh "${args[@]}" --instance qm1 --qmgr QM1 --preflight-only
 bash /project/install/install.sh "${args[@]}" --instance qm1 --qmgr QM1
 old=$(sha256sum "/opt/mq-exporter/qm1/$binary")
 expect_failure() { if "$@" >/tmp/expected-failure.log 2>&1; then printf 'Expected failure was accepted\n' >&2; exit 1; fi; }

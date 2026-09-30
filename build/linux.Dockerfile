@@ -1,7 +1,7 @@
 FROM registry.access.redhat.com/ubi8/ubi@sha256:0251a8aae836408233eee58dbd3a9b1659efe479b9060a4704161526ff85d329
 # This image contains no MQ SDK or runtime. Never publish an image with MQ inputs.
 RUN LD_LIBRARY_PATH=/usr/lib64:/lib64 dnf -y install \
-    gcc-8.5.0-28.el8_10 binutils-2.30-128.el8_10 \
+    gcc-8.5.0-29.el8_10 binutils-2.30-128.el8_10 \
     glibc-devel-2.28-251.el8_10.40 diffutils-3.6-6.el8 \
     && dnf clean all
 ENV GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=1

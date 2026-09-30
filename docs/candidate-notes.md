@@ -10,7 +10,7 @@ the Prometheus health endpoint. Neither package installs or changes a Prometheus
 server or Grafana Alloy. Their configuration is supplied only as examples.
 
 Initial targets: Linux x86-64 on RHEL 8.10 / glibc 2.28 and RHEL 9.x / glibc 2.34,
-with an existing IBM MQ 9.3.0.27 runtime; Windows Server 2019 amd64, with its MQ
+with an existing IBM MQ 9.3.0 or newer runtime; Windows Server 2019 amd64, with its MQ
 runtime version independently confirmed. Platform support remains provisional.
 
 Archives contain precompiled executables, installers, notices, SBOM and build
@@ -21,6 +21,8 @@ per-artifact metadata before use. Native RHEL and Server 2019 lifecycle checks
 and live MQ 9.3.0.35 trial checks are described in the
 [compatibility guide](https://rknightion.github.io/mq-exporter-dist/compatibility/).
 Exact MQ 9.3.0.27 server/local-bindings acceptance remains outstanding.
+The Linux installer version gate accepts 9.3.0 and newer; this release has no
+additional native MQ runtime acceptance beyond the compatibility guide.
 Build metadata records build-time checks, not
 subsequent native validation.
 
