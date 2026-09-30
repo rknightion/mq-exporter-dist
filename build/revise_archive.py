@@ -129,7 +129,7 @@ def revise(version, source_version, platform, exporter):
         raise ValueError("target archive already exists")
     data = archive_bytes(payload, platform, binary)
     target.write_bytes(data)
-    (output / (target_name + ".sha256")).write_text(digest(data) + "  " + target_name + "\n")
+    (output / (target_name + ".sha256")).write_bytes((digest(data) + "  " + target_name + "\n").encode())
     (output / (target_name + ".metadata.json")).write_bytes(payload["build-metadata.json"])
     (output / (target_name + ".sbom.cdx.json")).write_bytes(payload["sbom.cdx.json"])
     print(target_name + " sha256=" + digest(data))
