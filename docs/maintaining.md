@@ -30,8 +30,8 @@ There are two tracks with independent counters and separate GitHub releases:
 
 | Track | Stable | Candidate | Contents |
 |---|---|---|---|
-| Native | `v6.0.0`, then `v6.0.0-1`, `v6.0.0-2` | `v6.0.0-1-rc.1` | Unchanged upstream: Prometheus and OTel, Linux and Windows, RPMs |
-| Custom | `v6.0.0-custom-1`, `v6.0.0-custom-2` | `v6.0.0-custom-1-rc.1` | Linux Prometheus with `build/patches/` applied |
+| Native | `v6.0.0`, then `v6.0.0-1`, `v6.0.0-2` | `v6.0.0-1-rc.1` | Unchanged upstream: Prometheus and OTel Linux/Windows archives; RPMs released separately |
+| Custom | `v6.0.0-custom-1`, `v6.0.0-custom-2`, `v6.0.0-custom-3` | `v6.0.0-custom-1-rc.1` | Linux Prometheus with `build/patches/` applied |
 
 `-N` counts distribution revisions (packaging, installer or CI changes) of the same
 upstream tag. `build/versions.py` defines the grammar and ordering, and

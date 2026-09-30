@@ -47,7 +47,7 @@ repeatable installs.
 For an existing local queue manager `QM1` and service account `mqmon`:
 
 ```bash
-sudo bash install.sh --version v6.0.0-1 \
+sudo bash install.sh --version v6.0.0-2 \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
 
@@ -78,8 +78,8 @@ Transfer the archive, its `SHA256SUMS` file and installer through your approved
 channel. The checksum file must come from a trusted source.
 
 ```bash
-sudo bash install.sh --version v6.0.0 \
-  --archive /media/mq-exporter-dist-v6.0.0-linux-amd64.tar.gz \
+sudo bash install.sh --version v6.0.0-2 \
+  --archive /media/mq-exporter-dist-v6.0.0-2-linux-amd64.tar.gz \
   --checksums /media/SHA256SUMS \
   --instance qm1 --qmgr QM1 --service-user mqmon --port 9157
 ```
@@ -168,7 +168,7 @@ are preserved, and a failed switch is rolled back. The previous build's binary
 stays in the instance directory.
 
 Pin exact versions with
-`--native-version v6.0.0-2` and `--custom-version v6.0.0-custom-2`; do that for
+`--native-version v6.0.0-2` and `--custom-version v6.0.0-custom-3`; do that for
 change-controlled rollouts so every host gets the same release. Use the `update.sh`
 from the newest archive you are installing.
 
@@ -193,10 +193,10 @@ from the newest archive you are installing.
    the archives and checksum files:
 
    ```bash
-   sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-2 \
+   sudo bash update.sh --native-version v6.0.0-2 --custom-version v6.0.0-custom-3 \
      --native-archive mq-exporter-dist-v6.0.0-2-linux-amd64.tar.gz --native-checksums native/SHA256SUMS \
      --otel-archive mq-otel-dist-v6.0.0-2-linux-amd64.tar.gz --otel-checksums native/SHA256SUMS \
-     --custom-archive mq-exporter-dist-custom-v6.0.0-custom-2-linux-amd64.tar.gz --custom-checksums custom/SHA256SUMS
+     --custom-archive mq-exporter-dist-custom-v6.0.0-custom-3-linux-amd64.tar.gz --custom-checksums custom/SHA256SUMS
    ```
 
    Native and custom releases have separate `SHA256SUMS` files. The OTel archive

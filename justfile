@@ -45,6 +45,7 @@ lint:
     GOTOOLCHAIN=local go vet ./...
     GOOS=windows GOARCH=amd64 CGO_ENABLED=0 GOTOOLCHAIN=local go vet ./cmd/... ./internal/...
     shellcheck install/*.sh tests/*.sh
+    python3 -m json.tool build/known-releases.json > /dev/null
     pwsh -NoProfile -File tests/parse-powershell.ps1
 
 # Run focused distribution regressions.

@@ -24,6 +24,10 @@ pre-commit gate. Do not claim unavailable native or live MQ tests passed.
 - `build/versions.py` owns the grammar and `tests/version-vectors.json` pins it for
   every language. SemVer tools sort `vX.Y.Z-N` below `vX.Y.Z`; always compare with it.
 - Keep distribution and upstream versions separate.
+- Native and custom Linux archives share `install.sh`; its MQ 9.3.0-or-newer
+  gate is not proof of live acceptance for every runtime version.
+- For an installer-only revision, use Candidate release `source_release` to
+  retain accepted executable bytes; do not publish unrelated rebuild drift.
 - A stable release needs acceptance, per `docs/compatibility.md`, for every surface
   it changes. Before publishing, prove that unchanged surfaces are byte-identical to
   the last accepted release (archive metadata `payload_sha256`), and document any

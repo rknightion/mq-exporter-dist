@@ -7,7 +7,7 @@ It exists for teams who choose alert thresholds per queue from that attribute.
 
 | | Upstream-native | Custom |
 |---|---|---|
-| Release tags | `v6.0.0`, `v6.0.0-1`, `v6.0.0-2` | `v6.0.0-custom-1`, `v6.0.0-custom-2` |
+| Release tags | `v6.0.0`, `v6.0.0-1`, `v6.0.0-2` | `v6.0.0-custom-1`, `v6.0.0-custom-2`, `v6.0.0-custom-3` |
 | Linux archive | `mq-exporter-dist-<tag>-linux-amd64.tar.gz` | `mq-exporter-dist-custom-<tag>-linux-amd64.tar.gz` |
 | Exporter binary | `mq_prometheus` | `mq_prometheus_custom` |
 | Source | IBM upstream, unchanged | IBM upstream plus `build/patches/qdepthhi.patch` |
