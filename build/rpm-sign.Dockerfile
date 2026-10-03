@@ -1,4 +1,4 @@
-FROM almalinux:9@sha256:3a3fa7f043b142bc8008c8b308d39b47d2c84008addcd52f9f9a7a82d2a90474
+FROM almalinux:9@sha256:9819dc675b67b595c2b59e42be7763fca1a8bb217fa5944e04daa22e9a64db16
 # Signing tools only. This image never contains MQ files or private keys.
 ARG RPM_SIGN_VERSION
 ARG CREATEREPO_VERSION
