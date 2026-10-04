@@ -44,7 +44,7 @@ jobs:
       - name: Prepare signing tools without key access
         run: just build-rpm-signer
       - name: Retrieve dedicated signing subkey
-        uses: rknightion/.github/.github/actions/bao-secret@3b145adef40aecb043c24f80bfe44c95d57741a2 # v1.25.4
+        uses: rknightion/.github/.github/actions/bao-secret@c36bf7ded21407b0a5169ecb2502d6a3a385be30 # v1.25.5
         with:
           role: rknightion-mq-exporter-dist-rpm-signing
           path: rknightion/mq-exporter-dist-rpm-signing
