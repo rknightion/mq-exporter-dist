@@ -5,7 +5,6 @@ synthetic examples. Never import private diagnostics, identifiers, paths or hist
 Inspect staged files, artifacts and metadata for secrets and private material before
 any upload, commit or release. IBM MQ SDK/runtime files are build inputs only.
 
-Track work in `backlog/` through the `backlog` CLI; never hand-edit task files.
 Keep internal investigation records in ignored local storage. Public `docs/`
 contains user instructions and compatibility limits, not internal run histories.
 
