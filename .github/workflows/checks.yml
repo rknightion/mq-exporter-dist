@@ -29,11 +29,11 @@ jobs:
       - run: just check
       - run: just public-check
   actionlint:
-    uses: rknightion/.github/.github/workflows/actionlint.yml@f32275a4a7641f34db5cb005d270db961b54a680 # v1.25.3
+    uses: rknightion/.github/.github/workflows/actionlint.yml@3b145adef40aecb043c24f80bfe44c95d57741a2 # v1.25.4
     permissions:
       contents: read
   zizmor:
-    uses: rknightion/.github/.github/workflows/zizmor.yml@f32275a4a7641f34db5cb005d270db961b54a680 # v1.25.3
+    uses: rknightion/.github/.github/workflows/zizmor.yml@3b145adef40aecb043c24f80bfe44c95d57741a2 # v1.25.4
     permissions:
       contents: read
       actions: read
