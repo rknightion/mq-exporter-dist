@@ -31,5 +31,3 @@ pre-commit gate. Do not claim unavailable native or live MQ tests passed.
   it changes. Before publishing, prove that unchanged surfaces are byte-identical to
   the last accepted release (archive metadata `payload_sha256`), and document any
   change that was not natively retested.
-
-Preserve unrelated work.
