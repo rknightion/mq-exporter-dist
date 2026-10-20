@@ -1,7 +1,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # renovate: datasource=golang-version depName=go
-go_version := "1.27.2"
+go_version := "1.27.3"
 # renovate: datasource=python-version depName=python
 python_version := "3.15"
 
