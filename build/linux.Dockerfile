@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi@sha256:70bb51215d4452426d434aed707a297c7e03cbe551e910d6b9aa0fa39cd26edc
+FROM registry.access.redhat.com/ubi8/ubi@sha256:c0fd81a16789aceea2f12b6644ac0f1a743ba4632414211ed76ef10adf196452
 # This image contains no MQ SDK or runtime. Never publish an image with MQ inputs.
 RUN LD_LIBRARY_PATH=/usr/lib64:/lib64 dnf -y install \
     gcc-8.5.0-29.el8_10 binutils-2.30-128.el8_10 \
