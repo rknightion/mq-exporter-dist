@@ -1,15 +1,15 @@
 {
   "upstream_tag": "v6.0.0",
   "upstream_commit": "7bce9b8ef9ef513ff77688f022929843d5ba7eaf",
-  "go_version": "1.27.1",
-  "go_linux_sha256": "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445",
-  "go_windows_sha256": "a3911b5e0e1b1053f25ed0675f4c1c6aad1e2bfcf253df2b9be4caabd2edd95d",
+  "go_version": "1.27.3",
+  "go_linux_sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+  "go_windows_sha256": "f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff",
   "mq_sdk_version": "9.3.0.27",
   "mq_linux_sha256": "3642ea4adf06e5aeb8744fd947b524fe071ef62305efc312b911092866c8655f",
   "mq_windows_sha256": "e1e7dcf2ae1b566b816953864ec140d2ff87ad2da32bbbd73ae58dadfdfed419",
   "mq_digest_source": "SHA-256 calculated from IBM HTTPS downloads; verification recorded in build/publisher-verification.json",
-  "linux_image": "registry.access.redhat.com/ubi8/ubi@sha256:0251a8aae836408233eee58dbd3a9b1659efe479b9060a4704161526ff85d329",
-  "linux_validation_image": "registry.access.redhat.com/ubi9/ubi@sha256:f3b9841ea7615b38fd271cf18ae235d8228d3369036eb175ded171c936808255",
+  "linux_image": "registry.access.redhat.com/ubi8/ubi@sha256:c0fd81a16789aceea2f12b6644ac0f1a743ba4632414211ed76ef10adf196452",
+  "linux_validation_image": "registry.access.redhat.com/ubi9/ubi@sha256:81c4fc967bbc29b1c6982087275370eae7871cbe39a81c25b7d310723f62c68c",
   "windows_toolchain_url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r1.zip",
   "windows_toolchain_sha256": "c1f52294597c0b73786b2a78eb5d176d89226d2f21875eab75e783a8b1cefcc4",
   "windows_toolchain_digest_source": "Release .zip.sha256 asset",
@@ -19,5 +19,5 @@
   "service_xsys_module_sum": "h1:dO4czNzziLiiXplLQgBCEpCvXQ3dnkn0SdaZSYdQ+FY=",
   "linux_gcc": "8.5.0-29.el8_10",
   "linux_binutils": "2.30-128.el8_10",
-  "linux_glibc_devel": "2.28-251.el8_10.40"
+  "linux_glibc_devel": "2.28-251.el8_10.48"
 }

@@ -4,6 +4,11 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 go_version := "1.27.3"
 # renovate: datasource=python-version depName=python
 python_version := "3.15"
+# Binary wheels for PyYAML and macOS watchdog require this docs interpreter.
+docs_python_version := "3.13"
+
+# renovate: datasource=pypi depName=pip
+pip_version := "26.2.2"
 
 # renovate: datasource=pypi depName=mkdocs
 mkdocs_version := "1.6.1"
@@ -133,7 +138,7 @@ revise-archive version source_version platform exporter:
 # Export the CI tool versions from this task interface.
 [group('gen')]
 ci-tool-versions:
-    @printf 'go=%s\npython=%s\n' '{{ go_version }}' '{{ python_version }}'
+    @printf 'go=%s\npython=%s\ndocs-python=%s\n' '{{ go_version }}' '{{ python_version }}' '{{ docs_python_version }}'
 
 # Publish verified release bytes without rebuilding; rc versions remain prereleases and custom releases never become "latest".
 [group('release')]
@@ -180,10 +185,11 @@ docs-lock:
 # Install hash-locked documentation tools on the build machine only.
 [group('dev')]
 docs-install:
-    python3 -m venv .work/docs-venv
-    .work/docs-venv/bin/python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r site/requirements.txt
+    python{{ docs_python_version }} -m venv .work/docs-venv-{{ docs_python_version }}
+    .work/docs-venv-{{ docs_python_version }}/bin/python -m pip install --disable-pip-version-check "pip=={{ pip_version }}"
+    .work/docs-venv-{{ docs_python_version }}/bin/python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r site/requirements.txt
 
 # Build and privacy-check the static documentation with strict link validation.
 [group('build')]
 docs-build: docs-install
-    .work/docs-venv/bin/python build/docs.py
+    .work/docs-venv-{{ docs_python_version }}/bin/python build/docs.py

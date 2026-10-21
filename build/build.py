@@ -75,7 +75,7 @@ def prepare_service(work, cache):
                 target = wrapper / "vendor/golang.org/x/sys" / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(z.read(name))
-    (wrapper / "go.mod").write_text("module github.com/rknightion/mq-exporter-dist/service\n\ngo 1.26.0\n\nrequire golang.org/x/sys " + version + "\n")
+    (wrapper / "go.mod").write_text("module github.com/rknightion/mq-exporter-dist/service\n\ngo 1.27.3\n\nrequire golang.org/x/sys " + version + "\n")
     (wrapper / "vendor/modules.txt").write_text("# golang.org/x/sys " + version + "\n## explicit; go 1.25.0\ngolang.org/x/sys/windows\ngolang.org/x/sys/windows/svc\n")
     shutil.copyfile(ROOT / "build/service.go.txt", wrapper / "main.go")
     return wrapper
@@ -284,7 +284,10 @@ def main():
         exit_code = "10" if args.exporter == "prometheus" else "1"
         container("bash", "-c", "/work/output/" + binary + " -f /work/output/config.json >/work/output/startup.log 2>&1; test $? -eq " + exit_code)
         container("bash", "-c", "mkdir /tmp/mq-conflict; ln -s /opt/mqm/lib64/libcurl.so /tmp/mq-conflict/libcurl.so.4; ! LD_LIBRARY_PATH=/tmp/mq-conflict curl --version | grep '^Protocols:.*https'; LD_LIBRARY_PATH=/usr/lib64:/lib64 curl --version | grep '^Protocols:.*https'")
-        validation = ["docker", "run", "--rm", "--network", "none", "--platform", "linux/amd64", "-v", str(output) + ":/output:ro", "-v", str(work / "mq") + ":/opt/mqm:ro", "-e", "LD_BIND_NOW=1", "-e", "LD_LIBRARY_PATH=/opt/mqm/lib64:/usr/lib64:/lib64", PINS["linux_validation_image"]]
+        run("docker", "build", "--platform", "linux/amd64", "--build-arg", "BASE=" + PINS["linux_validation_image"],
+            "-f", str(ROOT / "build/ca.Dockerfile"), "-t", "mq-dist-el9-validation:local", str(ROOT / "build"))
+        validation_image = run("docker", "image", "inspect", "mq-dist-el9-validation:local", "--format", "{{.Id}}")
+        validation = ["docker", "run", "--rm", "--network", "none", "--platform", "linux/amd64", "-v", str(output) + ":/output:ro", "-v", str(work / "mq") + ":/opt/mqm:ro", "-e", "LD_BIND_NOW=1", "-e", "LD_LIBRARY_PATH=/opt/mqm/lib64:/usr/lib64:/lib64", validation_image]
         run(*validation, "/output/" + binary, "--help")
         run(*validation, "/output/mq-config-check", "-f", "/output/config.json")
         evidence = {"compiled": True, "loader_smoke": "EL8 build container, MQ client runtime", "config_reader": "PASS: actual upstream initConfig", "local_bindings": "unavailable", "live_mq": "unavailable", "kernel_4_18": "unavailable", "service_lifecycle": "unavailable", "build_image": image,
