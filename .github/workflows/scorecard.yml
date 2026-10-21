@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   scorecard:
-    uses: rknightion/.github/.github/workflows/scorecard.yml@5d0de41efd56d620e1e9e7e45a844cdb4828b120 # v1.25.12
+    uses: rknightion/.github/.github/workflows/scorecard.yml@42113a21e3ab32288c0931d8682ebbd80ff30c37 # v1.25.13
     permissions:
       contents: read
       security-events: write
