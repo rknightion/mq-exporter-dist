@@ -1,4 +1,8 @@
 FROM almalinux:9@sha256:9819dc675b67b595c2b59e42be7763fca1a8bb217fa5944e04daa22e9a64db16
+# Incident workaround until the distro ships a fixed CA package; public roots only.
+COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blacklist/
+COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blocklist/
+RUN update-ca-trust
 # Signing tools only. This image never contains MQ files or private keys.
 ARG RPM_SIGN_VERSION
 ARG CREATEREPO_VERSION

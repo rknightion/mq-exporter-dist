@@ -11,9 +11,8 @@ notices, SBOM and build metadata. The metadata and SBOM record the upstream tag 
 commit and the patch's SHA-256. IBM MQ SDK/runtime libraries are not included.
 The Linux installer accepts MQ 9.3.0 and newer. Its version check is exercised
 with synthetic version output; see the compatibility guide for runtime tests.
-v6.0.0-custom-3 retains the accepted executables and other unchanged payloads
-from v6.0.0-custom-2. Its Linux installer and versioned metadata/SBOM are revised;
-the revised archive was not natively retested on RHEL.
+This prerelease candidate rebuilds exporter and helper executables with Go
+1.27.3. These rebuilt executables have not repeated native RHEL acceptance.
 There are no Windows, OpenTelemetry or RPM packages on this track; use the native
 releases for those.
 

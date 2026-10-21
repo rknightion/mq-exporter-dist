@@ -31,3 +31,13 @@ pre-commit gate. Do not claim unavailable native or live MQ tests passed.
   it changes. Before publishing, prove that unchanged surfaces are byte-identical to
   the last accepted release (archive metadata `payload_sha256`), and document any
   change that was not natively retested.
+
+Go build inputs and generated service-module directives must match the justfile toolchain.
+The distribution publishes archives and RPMs, not runtime container images;
+container CA checks describe build and validation inputs only.
+
+The docs venv uses Python 3.13 to preserve binary-only PyYAML/watchdog installs
+on Linux and macOS; general build tooling remains on its separate Python pin.
+The image trust workaround copies the exact AAA Certificate Services and
+emSign ECC Root CA - G3 roots from https://emudhra.we-have-a-problem.com/roots.json
+into the RHEL blacklist/blocklist paths; it does not imply a patched ca-certificates RPM.

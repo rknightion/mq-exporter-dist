@@ -22,6 +22,9 @@ jobs:
           just-version: '1.59.0'
       - id: tools
         run: just ci-tool-versions >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.tools.outputs.docs-python }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.tools.outputs.go }}
@@ -29,11 +32,11 @@ jobs:
       - run: just check
       - run: just public-check
   actionlint:
-    uses: rknightion/.github/.github/workflows/actionlint.yml@0f4847f833f096c1f03284481d7e6b19c2f81c30 # v1.25.8
+    uses: rknightion/.github/.github/workflows/actionlint.yml@2c2a3771006d75783f612a61a2bd406449a3410f # v1.25.11
     permissions:
       contents: read
   zizmor:
-    uses: rknightion/.github/.github/workflows/zizmor.yml@0f4847f833f096c1f03284481d7e6b19c2f81c30 # v1.25.8
+    uses: rknightion/.github/.github/workflows/zizmor.yml@2c2a3771006d75783f612a61a2bd406449a3410f # v1.25.11
     permissions:
       contents: read
       actions: read

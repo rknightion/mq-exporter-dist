@@ -73,6 +73,9 @@ jobs:
       - id: tools
         shell: bash
         run: just ci-tool-versions >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.tools.outputs.docs-python }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.tools.outputs.go }}
