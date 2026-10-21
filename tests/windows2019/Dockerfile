@@ -1,6 +1,6 @@
 # escape=`
 # Disposable test image only. MQ SDK and exporter files are mounted at runtime.
-FROM mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
+FROM mcr.microsoft.com/windows/servercore:ltsc2019@sha256:849b93b10aab37706b3d38df598973b2d1811bc3b818147baf4a342e0a9f73cf
 # The bootstrapper's elevation handoff stalls under ContainerAdministrator.
 # Use container-local SYSTEM for installation only, not for exporter tests.
 USER "NT AUTHORITY\SYSTEM"
