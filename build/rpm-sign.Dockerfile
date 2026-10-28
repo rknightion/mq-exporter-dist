@@ -1,4 +1,4 @@
-FROM almalinux:9@sha256:9819dc675b67b595c2b59e42be7763fca1a8bb217fa5944e04daa22e9a64db16
+FROM almalinux:9@sha256:245f8aab832fe800aa42bdab5fad75ebbd8e0b4c9f24820a83c638b177857ae2
 # Incident workaround until the distro ships a fixed CA package; public roots only.
 COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blacklist/
 COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blocklist/
