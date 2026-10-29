@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi@sha256:e4f648d595be85bc8cde7fbd5ced7b8eb566099ba377bb712bfb30a8e1737125
+FROM registry.access.redhat.com/ubi8/ubi@sha256:018534b4e3bdc491de8b4dfd3b21662dba5c19fb24d11b8778d370de4d5e9eed
 # Incident workaround until the distro ships a fixed CA package; public roots only.
 COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blacklist/
 COPY ca-blocklist/*.pem /etc/pki/ca-trust/source/blocklist/
