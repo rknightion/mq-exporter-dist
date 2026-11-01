@@ -4,18 +4,20 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
+
+	"github.com/rknightion/mq-exporter-dist/internal/repotest"
 )
 
-// vectorsPath resolves tests/version-vectors.json relative to this file, not
-// the working directory, so `go test ./...` from any location finds it.
+// vectorsPath resolves tests/version-vectors.json relative to the repository
+// root, found by walking up from the package directory, so the test also works
+// under go test -trimpath.
 func vectorsPath(t *testing.T) string {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("could not resolve caller")
+	root, err := repotest.Root()
+	if err != nil {
+		t.Fatalf("locate repository root: %v", err)
 	}
-	return filepath.Join(filepath.Dir(thisFile), "..", "..", "tests", "version-vectors.json")
+	return filepath.Join(root, "tests", "version-vectors.json")
 }
 
 type vectors struct {
