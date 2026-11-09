@@ -13,6 +13,23 @@ contains user instructions and compatibility limits, not internal run histories.
 The developer and CI task interface is the top-level justfile. `just check` is the
 pre-commit gate. Do not claim unavailable native or live MQ tests passed.
 
+## Tracking work
+
+Work is tracked in this repository's GitHub issues; they are the only queue. Do not add a checklist
+file such as `ROADMAP.md` beside them.
+
+- A pull request body says how it relates to an issue, on a line of its own: `Closes #N` with the
+  `Acceptance evidence` table from `.github/pull_request_template.md` (one row for each acceptance
+  criterion of that issue), `Refs #N` when it only relates to one, or `Task: none, <reason>`.
+- A pull request that changes `.github/workflows/` or `.github/actions/` carries no closing keyword:
+  write `Task: none, <reason>`, with `Refs #N` beside it if you like.
+- Contributors never need the project board or the tracker tooling; a maintainer handles both.
+- Issues and pull requests are public, so they carry no real identifiers: no email addresses,
+  handles, account ids, host or device names, addresses or coordinates. Write the shape, not the
+  instance.
+- Older commits and docs cite legacy board ids such as `MQ-1`. `just issue <ID>` prints the issue
+  each one became; `.github/tracker/id-map.json` is the map.
+
 ## Release tracks
 
 - Native track (`vX.Y.Z`, `vX.Y.Z-N`, `-rc.M` candidates): build the pinned upstream
