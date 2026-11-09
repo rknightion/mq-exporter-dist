@@ -39,3 +39,6 @@ __pycache__/
 
 # loop-pi (pi-subagents writes .pi/subagents/)
 .pi/
+
+# Machine-local agent loop artifacts
+codex/

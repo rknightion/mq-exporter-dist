@@ -193,3 +193,18 @@ docs-install:
 [group('build')]
 docs-build: docs-install
     .work/docs-venv-{{ docs_python_version }}/bin/python build/docs.py
+
+# GitHub issues and the rknightion Project; maintainers only (needs the tracker tools and credentials)
+[group('tracker')]
+[positional-arguments]
+tracker *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export TRACKER_REPO=rknightion/mq-exporter-dist TRACKER_PROJECT_OWNER=rknightion TRACKER_PROJECT=7
+    export TRACKER_ISSUE_IDENTITY=app TRACKER_PROJECT_IDENTITY=user
+    exec tracker-with-token "$@"
+
+# print the issue a legacy board id (MQ-1) became
+[group('tracker')]
+issue id:
+    TRACKER_REPO=rknightion/mq-exporter-dist tracker legacy {{ quote(id) }}
