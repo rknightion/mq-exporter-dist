@@ -61,4 +61,5 @@ Source pins and build commands are in the repository's
 
 [Read the documentation](https://rknightion.github.io/mq-exporter-dist/) ·
 [Download releases](https://github.com/rknightion/mq-exporter-dist/releases) ·
+[Contribute](https://github.com/rknightion/mq-exporter-dist/blob/main/CONTRIBUTING.md) ·
 [Report a vulnerability](SECURITY.md)
