@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `edited` re-runs the workflow when the pull request body changes, so the acceptance evidence
+    # check reads the new table.
+    types: [opened, edited, reopened, synchronize, ready_for_review]
 permissions:
   contents: read
 concurrency:
@@ -10,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   checks:
-    name: ci-success
+    name: just check
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
@@ -35,9 +38,108 @@ jobs:
     uses: rknightion/.github/.github/workflows/actionlint.yml@3aee36ed9f327d9238e387c7af7da9ec5369a263 # v1.25.31
     permissions:
       contents: read
+
+  # zizmor fails a pull request on any finding (enforce); push runs upload SARIF instead.
   zizmor:
-    uses: rknightion/.github/.github/workflows/zizmor.yml@3aee36ed9f327d9238e387c7af7da9ec5369a263 # v1.25.31
     permissions:
       contents: read
-      actions: read
       security-events: write
+      actions: read
+    uses: rknightion/.github/.github/workflows/zizmor.yml@e5b9f15bc8ccafdbad75e623bbd0dbb27127f049 # v1.28.0
+    with:
+      enforce: true
+
+  # A pull request that closes an issue shows evidence for each of its acceptance criteria. Checks
+  # only pull requests with a closing keyword (enforce-all-prs: false), because this repository takes
+  # outside and bot pull requests. Check run: `ac-evidence / Acceptance evidence`.
+  ac-evidence:
+    # The reusable fails on any event but pull_request; on a push to main this job is skipped.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    uses: rknightion/.github/.github/workflows/ac-evidence.yml@8f00b7fb896191e598f12ed565395697c539add1 # v1.26.9
+
+  # The lines a pull request adds carry no identifier, email address, public address or credential
+  # shape. The reusable fails on any event but pull_request, so it runs on pull requests only.
+  # Check run: `privacy-sweep / Privacy sweep`.
+  privacy-sweep:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: rknightion/.github/.github/workflows/privacy-sweep.yml@8f00b7fb896191e598f12ed565395697c539add1 # v1.26.9
+
+  # The Backlog.md board is retired: issues are the queue. A pull request may delete files under
+  # backlog/ or move them out, never add or change one there. Reads the file list from the API, so
+  # no pull request code is checked out.
+  backlog-freeze:
+    name: backlog/ is frozen
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Refuse additions and changes under backlog/
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ && "$CHANGED_FILES" =~ ^[0-9]+$ ]]; then
+            echo "::error title=backlog freeze::the pull request number or file count is malformed"
+            exit 1
+          fi
+          # The pull request files API lists at most 3000 files; refuse rather than check part of a change.
+          if (( CHANGED_FILES > 3000 )); then
+            echo "::error title=backlog freeze::${CHANGED_FILES} changed files is more than the API lists; split the pull request"
+            exit 1
+          fi
+          offending="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files?per_page=100" \
+            --jq '.[] | select(.status != "removed") | select(.filename | startswith("backlog/")) | "\(.status) \(.filename | @json)"')"
+          if [[ -n "$offending" ]]; then
+            echo "::error title=backlog freeze::this pull request adds or changes files under backlog/; the board is retired, so file the work as an issue"
+            printf '  %s\n' "$offending"
+            exit 1
+          fi
+          echo "No file under backlog/ is added or changed."
+
+  # Single required status check. Branch protection on `main` requires ONLY this job, so the gate's
+  # jobs can be added or renamed without re-touching protection.
+  # NOTE: `coverage` is intentionally absent from `needs` — see its comment above.
+
+  # Single aggregate check for the ruleset to require. The jobs that run on every event must
+  # succeed; the pull-request-only jobs must succeed on a pull request and are skipped otherwise.
+  ci-success:
+    name: ci-success
+    runs-on: ubuntu-26.04
+    if: always()
+    needs: [checks, actionlint, zizmor, ac-evidence, privacy-sweep, backlog-freeze]
+    steps:
+      - name: Require every job to pass
+        env:
+          EVENT: ${{ github.event_name }}
+          CHECKS: ${{ needs.checks.result }}
+          ACTIONLINT: ${{ needs.actionlint.result }}
+          ZIZMOR: ${{ needs.zizmor.result }}
+          AC_EVIDENCE: ${{ needs.ac-evidence.result }}
+          PRIVACY_SWEEP: ${{ needs.privacy-sweep.result }}
+          BACKLOG_FREEZE: ${{ needs.backlog-freeze.result }}
+        run: |
+          if [[ "$CHECKS" != "success" || "$ACTIONLINT" != "success" || "$ZIZMOR" != "success" ]]; then
+            echo "checks: ${CHECKS}, actionlint: ${ACTIONLINT}, zizmor: ${ZIZMOR}; all must pass on every event"
+            exit 1
+          fi
+          if [[ "$EVENT" == "pull_request" ]]; then
+            if [[ "$AC_EVIDENCE" != "success" || "$PRIVACY_SWEEP" != "success" || "$BACKLOG_FREEZE" != "success" ]]; then
+              echo "ac-evidence: ${AC_EVIDENCE}, privacy-sweep: ${PRIVACY_SWEEP}, backlog-freeze: ${BACKLOG_FREEZE}; all must pass on a pull request"
+              exit 1
+            fi
+          elif [[ "$AC_EVIDENCE" != "skipped" || "$PRIVACY_SWEEP" != "skipped" || "$BACKLOG_FREEZE" != "skipped" ]]; then
+            echo "ac-evidence: ${AC_EVIDENCE}, privacy-sweep: ${PRIVACY_SWEEP}, backlog-freeze: ${BACKLOG_FREEZE}; must be skipped off a pull request"
+            exit 1
+          fi
