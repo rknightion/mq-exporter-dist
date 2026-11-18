@@ -117,6 +117,7 @@ jobs:
   ci-success:
     name: ci-success
     runs-on: ubuntu-26.04
+    timeout-minutes: 5
     if: always()
     needs: [checks, actionlint, zizmor, ac-evidence, privacy-sweep, backlog-freeze]
     steps:
