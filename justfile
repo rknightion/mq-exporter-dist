@@ -32,6 +32,26 @@ setup:
     pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
     shellcheck --version
 
+# Warm the pinned developer toolchain and locked docs tools for Cursor Cloud.
+[script('bash')]
+cloud-bootstrap:
+    set -euo pipefail
+    bin="$PWD/.work/cursor-tools/bin"
+    mkdir -p "$bin"
+    go_root="$(GOTOOLCHAIN=go{{ go_version }} go env GOROOT)"
+    ln -sfn "$go_root/bin/go" "$bin/go"
+    ln -sfn "$go_root/bin/gofmt" "$bin/gofmt"
+    uv python install --no-bin {{ docs_python_version }}
+    python="$(uv python find --managed-python {{ docs_python_version }})"
+    ln -sfn "$python" "$bin/python3"
+    ln -sfn "$python" "$bin/python{{ docs_python_version }}"
+    export PATH="$bin:$PATH" GOTOOLCHAIN=local
+    just setup </dev/null
+    just docs-install </dev/null
+    go build -o /dev/null ./...
+    go test -c -o /dev/null ./...
+    GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o /dev/null ./cmd/... ./internal/...
+
 # Format Go and the task interface.
 [group('check')]
 fmt:
