@@ -14,7 +14,7 @@ pip_version := "26.2.2"
 mkdocs_version := "1.6.1"
 
 # renovate: datasource=rpm depName=rpm-build
-rpm_build_version := "4.14.3-32.el8_10"
+rpm_build_version := "4.14.3-34.el8_10"
 
 # renovate: datasource=rpm depName=rpm-sign
 rpm_sign_version := "4.16.1.3-40.el9"
