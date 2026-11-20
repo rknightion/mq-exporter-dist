@@ -1,7 +1,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # renovate: datasource=golang-version depName=go
-go_version := "1.27.3"
+go_version := "1.27.4"
 # renovate: datasource=python-version depName=python
 python_version := "3.15"
 # Binary wheels for PyYAML and macOS watchdog require this docs interpreter.
