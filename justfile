@@ -8,7 +8,7 @@ python_version := "3.15"
 docs_python_version := "3.13"
 
 # renovate: datasource=pypi depName=pip
-pip_version := "26.2.2"
+pip_version := "26.3"
 
 # renovate: datasource=pypi depName=mkdocs
 mkdocs_version := "1.6.1"
