@@ -17,7 +17,7 @@ mkdocs_version := "1.6.1"
 rpm_build_version := "4.14.3-34.el8_10"
 
 # renovate: datasource=rpm depName=rpm-sign
-rpm_sign_version := "4.16.1.3-40.el9"
+rpm_sign_version := "4.16.1.3-43.el9_9"
 # renovate: datasource=rpm depName=createrepo_c
 createrepo_version := "0.20.1-4.el9"
 
