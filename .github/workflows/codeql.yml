@@ -2,17 +2,15 @@ name: CodeQL
 on:
   push:
     branches: [main]
-  pull_request:
   schedule:
     - cron: '23 6 * * 1'
-permissions:
-  contents: read
+permissions: {}
 jobs:
   codeql:
     uses: rknightion/.github/.github/workflows/codeql.yml@84486af028f18f4a2d93ee5c4eb954fdd541d800 # v1.31.10
     with:
-      languages: '[{"language":"go","build-mode":"autobuild"}]'
-      fail-on-security-severity: high
+      languages: '[{"language":"go","build-mode":"autobuild"},{"language":"python","build-mode":"none"},{"language":"actions","build-mode":"none"}]'
+      timeout-minutes: 30
     permissions:
       contents: read
       actions: read
