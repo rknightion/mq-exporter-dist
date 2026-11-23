@@ -17,7 +17,7 @@ mkdocs_version := "1.6.1"
 rpm_build_version := "4.14.3-34.el8_10"
 
 # renovate: datasource=rpm depName=rpm-sign
-rpm_sign_version := "4.16.1.3-40.el9"
+rpm_sign_version := "v4.16.1.3-40.el9"
 # renovate: datasource=rpm depName=createrepo_c
 createrepo_version := "0.20.1-4.el9"
 
@@ -123,7 +123,7 @@ test-rpm packages:
 # Build the pinned signing tools without secrets (requires Docker).
 [group('build')]
 build-rpm-signer:
-    docker build --platform linux/amd64 --build-arg RPM_SIGN_VERSION={{ rpm_sign_version }} --build-arg CREATEREPO_VERSION={{ createrepo_version }} -f build/rpm-sign.Dockerfile -t mq-dist-rpm-sign build
+    docker build --platform linux/amd64 --build-arg RPM_SIGN_VERSION={{ trim_start_match(rpm_sign_version, "v") }} --build-arg CREATEREPO_VERSION={{ createrepo_version }} -f build/rpm-sign.Dockerfile -t mq-dist-rpm-sign build
 
 # Verify the exact successful source run before granting signing access.
 [group('release')]

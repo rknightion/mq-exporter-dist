@@ -25,6 +25,6 @@
   "customManagers": [{
     "customType": "regex",
     "managerFilePatterns": ["/^justfile$/"],
-    "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+ := \"(?<currentValue>[^\"]+)\""]
+    "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+ := \"v?(?<currentValue>[^\"]+)\""]
   }]
 }
