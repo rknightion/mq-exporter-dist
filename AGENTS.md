@@ -139,14 +139,3 @@ on Linux and macOS; general build tooling remains on its separate Python pin.
 The image trust workaround copies the exact AAA Certificate Services and
 emSign ECC Root CA - G3 roots from https://emudhra.we-have-a-problem.com/roots.json
 into the RHEL blacklist/blocklist paths; it does not imply a patched ca-certificates RPM.
-
-## Cursor Cloud specific instructions
-
-Use the repository's pinned Go and docs Python in each shell by running
-`export PATH="$PWD/.work/cursor-tools/bin:$PATH"` from the checkout root.
-
-- Fast check `just fmt-check </dev/null && go test ./...`.
-- Full gate `just check </dev/null`. This runs the portable PowerShell checks and builds the docs.
-
-Native installer cycles require disposable Windows or Linux hosts. Distribution packaging and
-live IBM MQ validation have separate SDK, runtime and platform prerequisites.
