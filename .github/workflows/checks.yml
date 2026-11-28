@@ -34,7 +34,10 @@ jobs:
           cache: false
       - run: just check
       - run: just public-check
+  # Pull requests only: the push to main re-lints the same workflow files the pull request linted.
+  # ci-success requires it on a pull request and skipped otherwise.
   actionlint:
+    if: github.event_name == 'pull_request'
     uses: rknightion/.github/.github/workflows/actionlint.yml@a6e7f83c8fd233841120fc14c0412124a445c306 # v1.35.0
     permissions:
       contents: read
@@ -58,19 +61,50 @@ jobs:
       contents: read
     uses: rknightion/.github/.github/workflows/privacy-sweep.yml@a6e7f83c8fd233841120fc14c0412124a445c306 # v1.35.0
 
-  # The Backlog.md board is retired: issues are the queue. A pull request may delete files under
-  # backlog/ or move them out, never add or change one there. Reads the file list from the API, so
-  # no pull request code is checked out.
-  backlog-freeze:
-    name: backlog/ is frozen
-    if: github.event_name == 'pull_request'
+  # Single required status check. Branch protection on `main` requires ONLY this job, so the gate's
+  # jobs can be added or renamed without re-touching protection.
+  # NOTE: `coverage` is intentionally absent from `needs` — see its comment above.
+
+  # Single aggregate check for the ruleset to require. The jobs that run on every event must
+  # succeed; the pull-request-only jobs must succeed on a pull request and are skipped otherwise.
+  ci-success:
+    name: ci-success
     runs-on: ubuntu-26.04
     timeout-minutes: 5
+    if: always()
+    needs: [checks, actionlint, zizmor, privacy-sweep]
+    # contents/pull-requests read: the folded backlog freeze step below lists the pull request's files.
     permissions:
       contents: read
       pull-requests: read
     steps:
+      - name: Require every job to pass
+        env:
+          EVENT: ${{ github.event_name }}
+          CHECKS: ${{ needs.checks.result }}
+          ACTIONLINT: ${{ needs.actionlint.result }}
+          ZIZMOR: ${{ needs.zizmor.result }}
+          PRIVACY_SWEEP: ${{ needs.privacy-sweep.result }}
+        run: |
+          if [[ "$CHECKS" != "success" || "$ZIZMOR" != "success" ]]; then
+            echo "checks: ${CHECKS}, zizmor: ${ZIZMOR}; both must pass on every event"
+            exit 1
+          fi
+          if [[ "$EVENT" == "pull_request" ]]; then
+            if [[ "$ACTIONLINT" != "success" || "$PRIVACY_SWEEP" != "success" ]]; then
+              echo "actionlint: ${ACTIONLINT}, privacy-sweep: ${PRIVACY_SWEEP}; both must pass on a pull request"
+              exit 1
+            fi
+          elif [[ "$ACTIONLINT" != "skipped" || "$PRIVACY_SWEEP" != "skipped" ]]; then
+            echo "actionlint: ${ACTIONLINT}, privacy-sweep: ${PRIVACY_SWEEP}; must be skipped off a pull request"
+            exit 1
+          fi
+      # The Backlog.md board is retired: issues are the queue. A pull request may delete files under
+      # backlog/ or move them out, never add or change one there. Folded in here from its own job (a
+      # few seconds of work that cost a runner start); it still fails ci-success on any offending file.
+      # Reads the file list from the API, so no pull request code is checked out.
       - name: Refuse additions and changes under backlog/
+        if: ${{ always() && github.event_name == 'pull_request' }}
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -95,39 +129,3 @@ jobs:
             exit 1
           fi
           echo "No file under backlog/ is added or changed."
-
-  # Single required status check. Branch protection on `main` requires ONLY this job, so the gate's
-  # jobs can be added or renamed without re-touching protection.
-  # NOTE: `coverage` is intentionally absent from `needs` — see its comment above.
-
-  # Single aggregate check for the ruleset to require. The jobs that run on every event must
-  # succeed; the pull-request-only jobs must succeed on a pull request and are skipped otherwise.
-  ci-success:
-    name: ci-success
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    if: always()
-    needs: [checks, actionlint, zizmor, privacy-sweep, backlog-freeze]
-    steps:
-      - name: Require every job to pass
-        env:
-          EVENT: ${{ github.event_name }}
-          CHECKS: ${{ needs.checks.result }}
-          ACTIONLINT: ${{ needs.actionlint.result }}
-          ZIZMOR: ${{ needs.zizmor.result }}
-          PRIVACY_SWEEP: ${{ needs.privacy-sweep.result }}
-          BACKLOG_FREEZE: ${{ needs.backlog-freeze.result }}
-        run: |
-          if [[ "$CHECKS" != "success" || "$ACTIONLINT" != "success" || "$ZIZMOR" != "success" ]]; then
-            echo "checks: ${CHECKS}, actionlint: ${ACTIONLINT}, zizmor: ${ZIZMOR}; all must pass on every event"
-            exit 1
-          fi
-          if [[ "$EVENT" == "pull_request" ]]; then
-            if [[ "$PRIVACY_SWEEP" != "success" || "$BACKLOG_FREEZE" != "success" ]]; then
-              echo "privacy-sweep: ${PRIVACY_SWEEP}, backlog-freeze: ${BACKLOG_FREEZE}; all must pass on a pull request"
-              exit 1
-            fi
-          elif [[ "$PRIVACY_SWEEP" != "skipped" || "$BACKLOG_FREEZE" != "skipped" ]]; then
-            echo "privacy-sweep: ${PRIVACY_SWEEP}, backlog-freeze: ${BACKLOG_FREEZE}; must be skipped off a pull request"
-            exit 1
-          fi
