@@ -38,7 +38,7 @@ jobs:
   # ci-success requires it on a pull request and skipped otherwise.
   actionlint:
     if: github.event_name == 'pull_request'
-    uses: rknightion/.github/.github/workflows/actionlint.yml@a6e7f83c8fd233841120fc14c0412124a445c306 # v1.35.0
+    uses: rknightion/.github/.github/workflows/actionlint.yml@0cc331c4859b1056333df332c7d31d23c9060c4c # v1.36.0
     permissions:
       contents: read
 
@@ -48,7 +48,7 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    uses: rknightion/.github/.github/workflows/zizmor.yml@a6e7f83c8fd233841120fc14c0412124a445c306 # v1.35.0
+    uses: rknightion/.github/.github/workflows/zizmor.yml@0cc331c4859b1056333df332c7d31d23c9060c4c # v1.36.0
     with:
       enforce: true
 
@@ -59,7 +59,7 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-    uses: rknightion/.github/.github/workflows/privacy-sweep.yml@a6e7f83c8fd233841120fc14c0412124a445c306 # v1.35.0
+    uses: rknightion/.github/.github/workflows/privacy-sweep.yml@0cc331c4859b1056333df332c7d31d23c9060c4c # v1.36.0
 
   # Single required status check. Branch protection on `main` requires ONLY this job, so the gate's
   # jobs can be added or renamed without re-touching protection.
